@@ -45,6 +45,7 @@ button,input,select{font:inherit;color:inherit}
 .search-btn kbd{margin-left:auto;font-family:inherit;font-size:11px;padding:0 6px;border:1px solid #D1D1D1;border-radius:4px;color:#8A8A8A}
 .top-actions{display:flex;align-items:center;gap:8px}
 .save-btn{display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;cursor:pointer;transition:background .15s}
+.ro .btn[data-act=newProject],.ro .btn[data-act=newAssign],.ro .btn[data-act=newPerson],.ro .btn[data-act=imp],.ro .btn[data-act=reset],.ro #upl,.ro [data-act=ghOff]{display:none!important}
 .save-btn:hover{background:rgba(255,255,255,.12)}
 .save-btn.dirty{background:#fff;color:#0F6CBD;border-color:#fff}
 .save-btn .dot{width:8px;height:8px;border-radius:50%;background:#C50F1F;display:none}
@@ -793,7 +794,7 @@ let S,DIRTY=false;
   try{if(!window.claude&&localStorage.getItem('wl-gh')&&localStorage.getItem('wl-gh-dirty')==='1')DIRTY=true}catch(e){}
 })();
 let REV=0;
-function markDirty(){DIRTY=true;REV++;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}if(GH&&GHOK){try{localStorage.setItem('wl-gh-dirty','1')}catch(e){}ghSchedule()}else updateSave()}
+function markDirty(){if(isRO())return;DIRTY=true;REV++;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}if(GH&&GHOK){try{localStorage.setItem('wl-gh-dirty','1')}catch(e){}ghSchedule()}else updateSave()}
 const uid=p=>p+Math.random().toString(36).slice(2,8);
 
 /* ---------- GitHub sync ----------
@@ -810,11 +811,14 @@ const uid=p=>p+Math.random().toString(36).slice(2,8);
 const GHOK=!window.claude;
 let GH=null,ghSha=null,ghEtag=null,ghBusy=false,ghTimer=0,ghPoll=0,SYNC='off',SYNC_MSG='',conflictOpen=false;
 try{GH=JSON.parse(localStorage.getItem('wl-gh')||'null');ghSha=localStorage.getItem('wl-gh-sha')||null}catch(e){}
+/* view-only: a link with ?view=owner/repo reads a public data repo without a token and can change nothing */
+if(!GH&&GHOK){try{const q=new URLSearchParams(location.search),m=(q.get('view')||'').match(/^([\w.-]+)\/([\w.-]+)$/);if(m)GH={owner:m[1],repo:m[2],path:q.get('path')||'data.json',branch:q.get('branch')||'main',token:'',ro:true}}catch(e){}}
+const isRO=()=>!!(GH&&GH.ro);let ROST='load',ROMSG='';
 const b64e=t=>{const u=new TextEncoder().encode(t);let b='';for(let i=0;i<u.length;i+=0x8000)b+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(b)};
 const b64d=t=>new TextDecoder().decode(Uint8Array.from(atob(t.replace(/\s/g,'')),c=>c.charCodeAt(0)));
 const ghPath=()=>GH.path.split('/').map(encodeURIComponent).join('/');
 function ghFetch(method,body,etag,url){
-  const h={Accept:'application/vnd.github+json',Authorization:'Bearer '+GH.token};
+  const h={Accept:'application/vnd.github+json'};if(GH.token)h.Authorization='Bearer '+GH.token;
   if(body)h['Content-Type']='application/json';
   if(etag)h['If-None-Match']=etag;
   const u=url||`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${ghPath()}`+(method==='GET'?`?ref=${encodeURIComponent(GH.branch)}`:'');
@@ -828,13 +832,13 @@ async function ghErr(r){let m='';try{m=(await r.json()).message||''}catch(e){}
 const ghNet=e=>e&&e.name==='TypeError'?new Error('Tidak ada koneksi. Perubahan aman di perangkat ini dan dikirim saat online.'):e;
 function setSync(st,msg=''){SYNC=st;SYNC_MSG=msg;updateSave();const el=$('#ghStatus');if(el)el.innerHTML=ghStatusHtml()}
 function ghStatusHtml(){if(!GH)return '';const m={ok:['b-opt','Tersinkron'],saving:['b-avail','Menyimpan…'],dirty:['b-avail','Menunggu dikirim'],load:['b-avail','Memuat…'],err:['b-over','Gagal']}[SYNC]||['b-neutral','Siap'];return `<span class="badge ${m[0]}">${m[1]}</span>${SYNC_MSG?` <span class="muted" style="font-size:12px">${esc(SYNC_MSG)}</span>`:''}`}
-function ghFlag(v){try{localStorage.setItem('wl-gh-dirty',v?'1':'')}catch(e){}}
-function ghStore(sha){ghSha=sha;try{localStorage.setItem('wl-gh-sha',sha||'');localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}}
+function ghFlag(v){if(isRO())return;try{localStorage.setItem('wl-gh-dirty',v?'1':'')}catch(e){}}
+function ghStore(sha){ghSha=sha;if(isRO())return;try{localStorage.setItem('wl-gh-sha',sha||'');localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}}
 function ghValid(o){return o&&Array.isArray(o.projects)&&Array.isArray(o.people)&&Array.isArray(o.assigns)&&o.settings&&o.settings.phaseW}
 function ghAdopt(o,sha){const d=seed();o.settings=Object.assign({},d.settings,o.settings);S=o;DIRTY=false;ghFlag(false);ghStore(sha)}
-function ghSchedule(){if(!GH||!GHOK)return;if(SYNC!=='saving')setSync('dirty');clearTimeout(ghTimer);ghTimer=setTimeout(()=>ghPush(),2500)}
+function ghSchedule(){if(!GH||!GHOK||GH.ro)return;if(SYNC!=='saving')setSync('dirty');clearTimeout(ghTimer);ghTimer=setTimeout(()=>ghPush(),2500)}
 async function ghPush(force){
-  if(!GH||!GHOK||ghBusy||conflictOpen)return;
+  if(!GH||!GHOK||GH.ro||ghBusy||conflictOpen)return;
   clearTimeout(ghTimer);ghBusy=true;setSync('saving');
   const rev=REV;
   try{
@@ -860,16 +864,17 @@ async function ghPull(initial){
       /* the repo is there but the file is not: this device makes it */
       const rr=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
       if(!rr.ok)throw await ghErr(r);
+      if(GH.ro)throw new Error('File data belum ada di repo itu.');
       ghSha=null;await ghPush();return}
     if(!r.ok)throw await ghErr(r);
     ghEtag=r.headers.get('ETag');
     const j=await r.json();
-    if(j.sha===ghSha){if(!DIRTY)setSync('ok');else ghSchedule();return}
+    if(j.sha===ghSha){if(!DIRTY)setSync('ok');else ghSchedule();if(GH.ro&&ROST!=='ok'){ROST='ok';render()}return}
     let o;try{o=JSON.parse(b64d(j.content))}catch(e){throw new Error('Isi file di GitHub bukan JSON yang valid')}
     if(!ghValid(o))throw new Error('Isi file di GitHub bukan data Workload')
     if(DIRTY){await ghConflict(j,o);return}
-    ghAdopt(o,j.sha);setSync('ok');render();toast(initial?'Data dimuat dari GitHub':'Data diperbarui dari perangkat lain')
-  }catch(e){setSync('err',ghNet(e).message)}
+    ghAdopt(o,j.sha);setSync('ok');if(GH.ro)ROST='ok';render();if(!GH.ro)toast(initial?'Data dimuat dari GitHub':'Data diperbarui dari perangkat lain')
+  }catch(e){if(GH&&GH.ro&&ROST!=='ok'){ROST='err';ROMSG=ghNet(e).message;render()}setSync('err',ghNet(e).message)}
 }
 /* two versions: the file on GitHub moved on while this device was
    holding changes. Nothing is overwritten until one is picked */
@@ -891,6 +896,7 @@ async function ghConnect(d){
   const m=String(d.repo||'').trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\.git$/,'').replace(/^\/|\/$/g,'').match(/^([\w.-]+)\/([\w.-]+)$/);
   if(!m){toast('Tulis repo sebagai pemilik/nama, misalnya Malegiw/workload-data','err');return}
   const token=String(d.token||'').trim();if(!token){toast('Token belum diisi','err');return}
+  const wasRO=isRO();
   GH={owner:m[1],repo:m[2],path:(String(d.path||'data.json').trim()||'data.json').replace(/^\//,''),branch:String(d.branch||'main').trim()||'main',token};
   try{const r=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
     if(!r.ok){const e=await ghErr(r);GH=null;toast(e.message,'err');return}
@@ -900,7 +906,7 @@ async function ghConnect(d){
   if(GH.pub)toast('Repo data bersifat Public: siapa pun bisa membaca datanya. Pastikan Anda memang menginginkannya.','warn')
   ghSha=null;ghEtag=null;
   /* a device that already holds edits asks before it takes the remote's */
-  DIRTY=S.updatedAt>0;ghFlag(DIRTY);
+  DIRTY=wasRO?false:S.updatedAt>0;ghFlag(DIRTY);
   ghStart();await ghPull(true);render();if(SYNC==='ok')toast('Tersambung ke GitHub')
 }
 /* a public data repo would put the names and workloads on the open web */
@@ -981,6 +987,7 @@ function shell(){
   applyTheme();updateSave();
 }
 function updateSave(){const b=$('#saveBtn');if(!b)return;
+  if(isRO()){b.classList.remove('dirty');b.style.pointerEvents='none';b.querySelector('.lbl').textContent=ROST==='load'?'Memuat…':'Hanya lihat';return}
   if(GH&&GHOK){const m={ok:'Tersinkron',saving:'Menyimpan…',dirty:'Simpan',err:'Gagal · ulangi',load:'Memuat…'}[SYNC]||'Tersinkron';b.classList.toggle('dirty',SYNC==='dirty'||SYNC==='err');b.querySelector('.lbl').textContent=m;b.title=SYNC_MSG||'';return}
   b.title='';b.classList.toggle('dirty',DIRTY);b.querySelector('.lbl').textContent=DIRTY?'Simpan':'Tersimpan'}
 function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){return 'light'}}
@@ -991,7 +998,12 @@ const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',wRole:'Semua',lcO
 function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
 function render(){
   const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
-  const m=$('#main');m.innerHTML=PAGES[v]();m.scrollTop=0;(MOUNT[v]||(()=>{}))();initSegs();
+  document.body.classList.toggle('ro',isRO());
+  const m=$('#main');
+  if(isRO()&&ROST!=='ok'){m.innerHTML=ROST==='err'?`<div class="card"><h2>Data tidak bisa dimuat</h2><p class="muted">${esc(ROMSG)}</p><p class="muted" style="font-size:13px">Pastikan tautan benar dan repo data bersifat Public.</p></div>`:`<div class="card"><h2>Memuat data…</h2></div>`;return}
+  m.innerHTML=PAGES[v]();m.scrollTop=0;(MOUNT[v]||(()=>{}))();initSegs();
+  if(isRO())updateSave();
+  if(isRO())$$('#main input,#main select,#main textarea').forEach(x=>{if(!x.closest('details'))x.disabled=true});
 }
 window.addEventListener('hashchange',render);
 
@@ -1185,13 +1197,19 @@ function treeTable(){let h=`<div class="tw"><table class="t tree"><thead><tr><th
 
 function ghCard(){
   if(!GHOK)return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:12px">Agar data sama di HP, iPad, dan laptop</div><div class="warnbox" style="background:var(--surface-3);color:var(--foreground)"><span>Fitur ini aktif di versi GitHub Pages. Halaman di dalam claude.ai tidak boleh menghubungi GitHub, jadi di sini data tetap disimpan lewat tombol Simpan.</span></div></div>`;
+  if(GH&&GH.ro)return `<div class="card mt"><h2>Mode hanya lihat</h2><div class="sub" style="margin-bottom:12px">Anda melihat data dari ${esc(GH.owner)}/${esc(GH.repo)}. Halaman ini tidak bisa mengubah data dan diperbarui otomatis.</div>
+    <details><summary style="cursor:pointer;font-weight:600">Khusus pemilik: hubungkan GitHub untuk mengedit</summary><div style="margin-top:12px">${ghForm()}</div></details></div>`;
   if(GH)return `<div class="card mt"><div class="card-head"><div><h2>Sinkronisasi GitHub</h2><div class="sub">Data dibagikan lewat file ${esc(GH.path)} di repo privat ${esc(GH.owner)}/${esc(GH.repo)} (branch ${esc(GH.branch)})</div></div><div class="right" id="ghStatus">${ghStatusHtml()}</div></div>
     <div class="muted" style="font-size:13px;margin-bottom:14px">Perubahan dikirim otomatis beberapa detik setelah Anda berhenti mengedit. Perangkat lain memeriksa pembaruan tiap 30 detik. Token tersimpan hanya di browser perangkat ini.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="ghSync">${ic('reset',16)}Sinkronkan sekarang</button><button class="btn danger" data-act="ghOff">Putuskan</button></div></div>`;
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="ghSync">${ic('reset',16)}Sinkronkan sekarang</button><button class="btn danger" data-act="ghOff">Putuskan</button></div>
+    <h3 style="margin:18px 0 6px">Bagikan hanya lihat</h3><div class="muted" style="font-size:13px;margin-bottom:8px">Orang yang membuka tautan ini hanya bisa melihat data, tanpa token. ${GH.pub===false?'<b>Repo ini Private, jadi tautan tidak akan berfungsi. Ubah repo data menjadi Public agar bisa dibagikan.</b>':'Repo data harus Public. Semua orang yang punya tautan bisa membaca isinya.'}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><input class="in" id="shareLink" readonly style="flex:1;min-width:240px" value="${esc(shareLink())}"><button class="btn" data-act="copyLink">Salin tautan</button></div></div>`;
   return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:14px">Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.</div>
-    <form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Boleh Private atau Public. Public berarti semua orang bisa membaca data. Terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
+    ${ghForm()}</div>`}
+function ghForm(){return `<form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Boleh Private atau Public. Public berarti semua orang bisa membaca data. Terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
     <div class="row2"><div class="field"><label>File data</label><input class="in" name="path" value="data.json"></div><div class="field"><label>Branch</label><input class="in" name="branch" value="main"></div></div>
-    <button class="btn primary" type="submit">Hubungkan</button></form></div>`}
+    <button class="btn primary" type="submit">Hubungkan</button></form>`}
+const shareLink=()=>location.origin+location.pathname+'?view='+GH.owner+'/'+GH.repo+(GH.path!=='data.json'?'&path='+encodeURIComponent(GH.path):'')+(GH.branch!=='main'?'&branch='+encodeURIComponent(GH.branch):'');
 function explainCard(){const st=S.settings,lv=st.lvF||LVF0;
   const ex={ph:'DED',role:'Civil/Structure',cx:3,al:50,pr:20,lvl:'Senior',cap:100};
   const w=st.phaseW[ex.ph],rf=(st.roleF[ex.role]||{})[ex.ph]??1,cf=st.cxF[ex.cx],lf=lv[ex.lvl],ld=w*rf*cf*ex.al*(1-ex.pr/100),ec=ex.cap*lf,u=ld*100/ec;
@@ -1304,17 +1322,19 @@ const ACT={
   async export(){if(!window.ExcelJS){toast('Library Excel belum termuat','err');return}try{await xlDownload(await xlBook('data'),`workload-analysis-${new Date().toISOString().slice(0,10)}.xlsx`)}catch(err){toast('Ekspor gagal: '+(err.message||err),'err')}},
   async tpl(){if(!window.ExcelJS){toast('Library Excel belum termuat','err');return}try{await xlDownload(await xlBook('template'),'Template-Workload.xlsx')}catch(err){toast('Gagal membuat template: '+(err.message||err),'err')}},
   imp:openImportDialog,
+  async copyLink(){const v=shareLink();try{await navigator.clipboard.writeText(v);toast('Tautan hanya lihat disalin')}catch(e){$('#shareLink')?.select();toast('Salin manual dari kotak tautan','warn')}},
   async copyCsv(){const rows=[['Personel','Disiplin','Utilisasi (%)','Status'],...S.people.map(e=>{const u=util(e.id);return [e.name,e.role,u.toFixed(1),ST_LABEL[status(u)]]})];const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     try{await navigator.clipboard.writeText(csv);toast('Ringkasan CSV disalin ke clipboard')}catch(e){toast('Clipboard tidak diizinkan di tampilan ini','err')}},
   ghSync(){if(DIRTY)ghPush();else ghPull(true)},
   ghOff(){ghDisconnect();render();toast('Sinkronisasi diputus. Data tetap ada di perangkat ini.','warn')},
   reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan dikembalikan ke data contoh.</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Reset</button></div>`);$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
 };
-document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
+const RO_OK=new Set(['cmd','close','theme','seg','sort','lcToggle','tree','treeAll','openPerson','openProject','openProjectBtn','export','tpl','copyCsv','ghSync','copyLink']);
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;if(isRO()&&!RO_OK.has(t.dataset.act)){toast('Mode hanya lihat: data tidak bisa diubah','warn');return}const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
 
 /* inputs */
 let rt=null;
-document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;const st=S.settings;
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k||isRO())return;const st=S.settings;
   if(k==='aprev')updAssignPreview();
   else if(k==='phaseW'){st.phaseW[t.dataset.k]=+t.value;t.style.setProperty('--p',t.value/1.5*100+'%');t.nextElementSibling.textContent=f2(t.value);markDirty()}
   else if(k==='roleF'){if(t.value!==''){(st.roleF[t.dataset.r]=st.roleF[t.dataset.r]||{})[t.dataset.k]=+t.value;markDirty()}}
@@ -1324,7 +1344,7 @@ document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)retu
   else if(k==='pprog'){const p=proj(t.dataset.id);p.progress=+t.value;t.style.setProperty('--p',t.value+'%');t.nextElementSibling.textContent=t.value+'%';$('#pload').textContent=f2(projLoad(p.id)/100)+' FTE';markDirty();clearTimeout(rt);rt=setTimeout(()=>{const ov=$('#ovl');const sc=ov&&$('.dialog',ov).scrollTop;const m=$('#main').innerHTML=PAGES[route()]();(MOUNT[route()]||(()=>{}))();initSegs();if(ov)$('.dialog',ov).scrollTop=sc},400)}
   else if(k==='alloc'){const a=S.assigns.find(x=>x.id===t.dataset.id);const v=clamp(+t.value||0,0,100);if(a){a.alloc=v;markDirty();const td=t.closest('tr').querySelector('td:nth-child(6) b');if(td)td.textContent=f1(aLoad(a))+'%'}}
 });
-document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;
+document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;if(isRO())return;
   if(k==='aFilter'){UI.aFilter=t.value;render()}
   if(k==='alloc'){render()}
 });
@@ -1594,7 +1614,7 @@ async function xlDownload(wb,name){
   const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('File Excel diunduh')}
 
 /* forms */
-document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();const d=Object.fromEntries(new FormData(f));
+document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();if(isRO()&&f.dataset.form!=='gh'){toast('Mode hanya lihat: data tidak bisa diubah','warn');return}const d=Object.fromEntries(new FormData(f));
   if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);if(ex)ex.alloc=clamp(ex.alloc+al,0,100);else S.assigns.push({id:uid('a'),p:d.p,e:d.e,alloc:al});markDirty();const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');if($('#ovl'))closeDialog();render()}
   if(f.dataset.form==='project'){const orig=f.dataset.orig;const id=d.id.trim();if(!id||(id!==orig&&S.projects.some(p=>p.id===id))){f.querySelector('[name=id]').classList.add('err');toast('Kode proyek sudah dipakai','err');return}
     if(d.end<d.start){f.querySelector('[name=end]').classList.add('err');toast('Tanggal selesai harus setelah mulai','err');return}
