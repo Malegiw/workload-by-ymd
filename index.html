@@ -322,13 +322,6 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
   .toast{min-width:0;max-width:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
-/* mode lihat saja: untuk penonton tanpa hak edit */
-.ro-badge{display:none;background:#fff;color:#0F6CBD}
-[data-ro] .ro-badge{display:inline-flex}
-[data-ro] #saveBtn,[data-ro] [data-act="newAssign"],[data-ro] [data-act="imp"],[data-ro] [data-act="newProject"],[data-ro] [data-act="newPerson"],[data-ro] [data-act="delAssign"],[data-ro] [data-act="editProject"],[data-ro] [data-act="delProject"],[data-ro] [data-act="assignTo"],[data-ro] [data-act="editPerson"],[data-ro] [data-act="delPerson"],[data-ro] [data-act="reset"],[data-ro] [data-act="tpl"],[data-ro] [data-act="ghSync"],[data-ro] [data-act="ghOff"],[data-ro] .edit-only,[data-ro] #upl,[data-ro] #impUpl{display:none!important}
-[data-ro] .g-12{grid-template-columns:minmax(0,1fr)}
-[data-ro] .phase{pointer-events:none}
-[data-ro] input[data-in]:disabled{opacity:.7;cursor:not-allowed}
 /* ══ Bencho components (MIT, bencho.dev/licence) ═══════════
    Their design tokens are mapped onto this app's own Fluent tokens
    on each component's root, so nothing new is defined globally:
@@ -736,6 +729,9 @@ const ROLES=['Lead Project','Process','Mechanical','Piping','Civil/Structure','E
 const ROLE_SHORT={'Lead Project':'Lead','Process':'Process','Mechanical':'Mech','Piping':'Piping','Civil/Structure':'Civil','Electrical':'Elect','Instrument':'Instr','DocCon':'DocCon'};
 const ROLE_COLOR={'Lead Project':'#0F6CBD','Process':'#8764B8','Mechanical':'#00A5AF','Piping':'#CA5010','Civil/Structure':'#107C10','Electrical':'#C239B3','Instrument':'#986F0B','DocCon':'#4F6BED'};
 const CX_LABEL={1:'Rendah',2:'Sedang',3:'Tinggi'};
+const LV=['Junior','Middle','Senior'],LV_LABEL={Junior:'Junior',Middle:'Middle / Professional',Senior:'Senior'},LVF0={Junior:0.7,Middle:1,Senior:1.25};
+const lvF=e=>((S.settings.lvF||LVF0)[e.level||'Middle']??1);
+const effCap=e=>(e.cap||100)*lvF(e);
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---------- seed data ---------- */
@@ -749,7 +745,7 @@ function seed(){
     ['Hendra Wijaya','Electrical'],['Putri Ayu','Electrical'],
     ['Agus Setiawan','Instrument'],['Lina Marlina','Instrument'],
     ['Tika Ramadhani','DocCon'],['Yoga Saputra','DocCon']
-  ].map((p,i)=>({id:'e'+(i+1),name:p[0],role:p[1],cap:100}));
+  ].map((p,i)=>({id:'e'+(i+1),name:p[0],role:p[1],level:['Senior','Middle','Middle','Junior','Senior','Middle','Middle','Junior','Senior','Junior','Middle','Senior','Middle','Junior','Middle','Junior'][i],cap:100}));
   const projects=[
     ['P-01','Petani GS Upgrading','GS Petani','DED',3,'2026-07-01','2027-03-31',45],
     ['P-02','Intan GS Brownfield Upgrading','GS Intan','FEED',3,'2026-09-01','2027-02-28',30],
@@ -783,7 +779,7 @@ function seed(){
       'Instrument':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1},
       'DocCon':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1.2}
     },
-    cxF:{1:0.8,2:1,3:1.25},thr:{low:70,high:100}
+    cxF:{1:0.8,2:1,3:1.25},lvF:{Junior:0.7,Middle:1,Senior:1.25},thr:{low:70,high:100}
   },people,projects,assigns};
 }
 
@@ -797,9 +793,7 @@ let S,DIRTY=false;
   try{if(!window.claude&&localStorage.getItem('wl-gh')&&localStorage.getItem('wl-gh-dirty')==='1')DIRTY=true}catch(e){}
 })();
 let REV=0;
-const EDIT_ACTS=new Set(['newAssign','assignTo','newProject','editProject','delProject','newPerson','editPerson','delPerson','delAssign','imp','tpl','reset','save','ghSync','ghOff']);
-let RO=false;
-function markDirty(){if(RO)return;DIRTY=true;REV++;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}if(GH&&GHOK){try{localStorage.setItem('wl-gh-dirty','1')}catch(e){}ghSchedule()}else updateSave()}
+function markDirty(){DIRTY=true;REV++;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}if(GH&&GHOK){try{localStorage.setItem('wl-gh-dirty','1')}catch(e){}ghSchedule()}else updateSave()}
 const uid=p=>p+Math.random().toString(36).slice(2,8);
 
 /* ---------- GitHub sync ----------
@@ -900,13 +894,13 @@ async function ghConnect(d){
   GH={owner:m[1],repo:m[2],path:(String(d.path||'data.json').trim()||'data.json').replace(/^\//,''),branch:String(d.branch||'main').trim()||'main',token};
   try{const r=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
     if(!r.ok){const e=await ghErr(r);GH=null;toast(e.message,'err');return}
-    const info=await r.json();if(!info.private)toast('Repo data ini publik: isinya bisa dibaca siapa saja.','warn');
+    const info=await r.json();if(!info.private&&!confirm_public()){GH=null;return}
   }catch(e){GH=null;toast(ghNet(e).message,'err');return}
   try{localStorage.setItem('wl-gh',JSON.stringify(GH));localStorage.removeItem('wl-gh-sha')}catch(e){}
   ghSha=null;ghEtag=null;
   /* a device that already holds edits asks before it takes the remote's */
   DIRTY=S.updatedAt>0;ghFlag(DIRTY);
-  vwStop();ghStart();await ghPull(true);render();if(SYNC==='ok')toast('Tersambung ke GitHub')
+  ghStart();await ghPull(true);render();if(SYNC==='ok')toast('Tersambung ke GitHub')
 }
 /* a public data repo would put the names and workloads on the open web */
 function confirm_public(){toast('Repo data harus Private. Ubah di Settings repo, bagian Danger Zone → Change visibility.','err');return false}
@@ -938,12 +932,12 @@ const fDate=s=>pDate(s).toLocaleDateString('id-ID',{day:'2-digit',month:'short',
 function aLoad(a){const p=proj(a.p),e=person(a.e);if(!p||!e)return 0;const st=S.settings;
   return (st.phaseW[p.phase]??0)*((st.roleF[e.role]||{})[p.phase]??1)*(st.cxF[p.cx]??1)*a.alloc*(1-p.progress/100)}
 const active=(p,d0,d1)=>pDate(p.start)<=d1&&pDate(p.end)>=d0;
-function util(eid,d0,d1){const e=person(eid);if(!e)return 0;let s=0;for(const a of S.assigns)if(a.e===eid){const p=proj(a.p);if(!p)continue;if(d0&&!active(p,d0,d1))continue;s+=aLoad(a)}return s*100/(e.cap||100)}
+function util(eid,d0,d1){const e=person(eid);if(!e)return 0;let s=0;for(const a of S.assigns)if(a.e===eid){const p=proj(a.p);if(!p)continue;if(d0&&!active(p,d0,d1))continue;s+=aLoad(a)}return s*100/effCap(e)}
 function status(u){const t=S.settings.thr;return u>t.high?'over':u>=t.low?'opt':'avail'}
 const ST_LABEL={avail:'Tersedia',opt:'Optimal',over:'Overload'};
 const ST_COLOR=u=>({avail:'var(--accent)',opt:'var(--success)',over:'var(--danger)'})[status(u)];
 const badge=u=>`<span class="badge b-${status(u)}">${ST_LABEL[status(u)]}</span>`;
-function roleUtil(role,d0,d1){const ms=S.people.filter(e=>e.role===role);if(!ms.length)return 0;const cap=ms.reduce((s,e)=>s+(e.cap||100),0);return ms.reduce((s,e)=>s+util(e.id,d0,d1)*(e.cap||100)/100,0)*100/cap}
+function roleUtil(role,d0,d1){const ms=S.people.filter(e=>e.role===role);if(!ms.length)return 0;const cap=ms.reduce((s,e)=>s+effCap(e),0);return ms.reduce((s,e)=>s+util(e.id,d0,d1)*effCap(e)/100,0)*100/cap}
 function weeks(n=12){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:n},(_,i)=>{const s=new Date(d);s.setDate(d.getDate()+i*7);const e=new Date(s);e.setDate(s.getDate()+6);return {s,e,l:s.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}})}
 function months(n=12,back=3){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()-back);return Array.from({length:n},(_,i)=>{const s=new Date(d.getFullYear(),d.getMonth()+i,1);const e=new Date(d.getFullYear(),d.getMonth()+i+1,0);return {s,e,l:s.toLocaleDateString('id-ID',{month:'short',year:'2-digit'})}})}
 const projLoad=pid=>S.assigns.filter(a=>a.p===pid).reduce((s,a)=>s+aLoad(a),0);
@@ -975,13 +969,13 @@ function shell(){
   <header class="topbar">
     <div class="brand"><span class="ptc"><canvas class="ptc-canvas" id="logoCv"></canvas></span>Workload <small>by YMD</small></div>
     <button class="search-btn" data-act="cmd">${ic('search',16)}<span>Cari proyek, personel…</span><kbd>Ctrl K</kbd></button>
-    <div class="top-actions"><span class="badge ro-badge">Hanya lihat</span>
+    <div class="top-actions">
       <button class="save-btn" id="saveBtn" data-act="save"><span class="dot"></span>${ic('save',16)}<span class="lbl">Tersimpan</span></button>
       <button class="ltoggle" data-act="theme" aria-label="Ganti tema"><span class="knob" id="knob"></span></button>
     </div>
   </header>
   <nav class="nav" id="nav">${VIEWS.map(v=>`<a href="#${v[0]}" data-v="${v[0]}">${ic(v[2])}<span class="ln">${v[1]}</span><span class="sn">${v[3]}</span></a>`).join('')}
-    <div class="foot">Rumus beban:<br>Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)</div></nav>
+    <div class="foot">Data contoh. Rumus beban:<br>Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)</div></nav>
   <main id="main"></main></div><div id="tip"></div><div class="toasts" id="toasts"></div>`;
   applyTheme();updateSave();
 }
@@ -992,7 +986,7 @@ function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(p
 function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
 
 /* ---------- UI state ---------- */
-const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',aLimit:50,wRole:'Semua',lcOff:{},open:{}};
+const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',wRole:'Semua',lcOff:{},open:{}};
 function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
 function render(){
   const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
@@ -1019,8 +1013,7 @@ function table(id,cols,rows,opt={}){
   const st=UI.sort[id]||opt.sort||{};let rs=[...rows];
   if(st.key){const c=cols.find(c=>c.key===st.key);if(c){const g=c.val||(r=>r[c.key]);rs.sort((a,b)=>{const x=g(a),y=g(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'id'))*(st.dir==='desc'?-1:1)})}}
   if(!rs.length)return `<div class="empty">${opt.empty||'Belum ada data'}</div>`;
-  const total=rs.length;if(opt.limit)rs=rs.slice(0,opt.limit);const more=total-rs.length;
-  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="${opt.noAnim?'':'enter '}${opt.rowAct?'click':''}" style="${opt.noAnim?'':`animation-delay:${Math.min(i,15)*18}ms`}" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${more>0?`<div style="text-align:center;margin-top:12px"><button class="btn" data-act="${opt.moreAct}">Tampilkan lebih banyak (${more} lagi)</button></div>`:''}`;
+  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="enter ${opt.rowAct?'click':''}" style="animation-delay:${Math.min(i,15)*18}ms" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
 /* charts */
@@ -1047,7 +1040,7 @@ function heatmap(el){
 }
 function stacked(el){
   const max=Math.max(150,...ROLES.map(r=>roleUtil(r)+5));
-  el.innerHTML=`<div class="sb">${ROLES.map(r=>{const ms=S.people.filter(e=>e.role===r);const cap=ms.reduce((s,e)=>s+(e.cap||100),0)||100;const by=PH.map(ph=>S.assigns.filter(a=>{const e=person(a.e),p=proj(a.p);return e&&p&&e.role===r&&p.phase===ph}).reduce((s,a)=>s+aLoad(a),0)*100/cap);const tot=by.reduce((s,v)=>s+v,0);
+  el.innerHTML=`<div class="sb">${ROLES.map(r=>{const ms=S.people.filter(e=>e.role===r);const cap=ms.reduce((s,e)=>s+effCap(e),0)||100;const by=PH.map(ph=>S.assigns.filter(a=>{const e=person(a.e),p=proj(a.p);return e&&p&&e.role===r&&p.phase===ph}).reduce((s,a)=>s+aLoad(a),0)*100/cap);const tot=by.reduce((s,v)=>s+v,0);
     return `<div class="sb-row"><span>${esc(ROLE_SHORT[r])}</span><div class="sb-track"><span class="sb-100" style="left:${100/max*100}%"></span>${PH.map((ph,i)=>`<div class="sb-seg" data-w="${by[i]/max*100}" style="background:${PH_COLOR[ph]}" data-tip="${esc(r)} · ${ph}\n${f1(by[i])}% dari kapasitas"></div>`).join('')}</div><b style="color:${ST_COLOR(tot)}">${f0(tot)}%</b></div>`}).join('')}</div>
     <div class="legend mt" style="flex-direction:row;flex-wrap:wrap;gap:14px">${PH.map(ph=>`<div class="li"><span class="sw" style="background:${PH_COLOR[ph]}"></span>${ph} (bobot ${f2(S.settings.phaseW[ph])})</div>`).join('')}</div>`;
   requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.sb-seg',el).forEach(s=>s.style.width=s.dataset.w+'%')));
@@ -1145,13 +1138,13 @@ PAGES.proyek=()=>`<div class="page-head"><div><h1>Proyek</h1><p>Klik fase untuk 
 PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'||ROLE_SHORT[e.role]===f).map(e=>({e,u:util(e.id)}));const W=weeks(12);
   return `<div class="page-head"><div><h1>Personel</h1><p>Utilisasi tiap engineer, lead project, dan DocCon</p></div><div class="actions"><button class="btn primary" data-act="newPerson">${ic('plus',16)}Personel baru</button></div></div>
   <div style="margin-bottom:16px">${seg('pf',['Semua',...ROLES.map(r=>ROLE_SHORT[r])],f)}</div>
-  <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · kapasitas ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
+  <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · ${esc(e.level||'Middle')} · ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
 MOUNT.personel=()=>animateRings();
 
-PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
-  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions">${mob?`<button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button>`:''}<button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
+PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
+  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions"><button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
   <div class="grid g-12">
-    ${mob?'':`<div class="card edit-only"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>`}
+    <div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>
     <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div><div class="right"><select class="in" style="width:auto" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
     ${table('asg',[
       {key:'p',label:'Proyek',render:r=>`<span class="code">${esc(r.p)}</span> ${esc(r.pp.name)}`},
@@ -1161,13 +1154,13 @@ PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=U
       {key:'alloc',label:'Alokasi',num:1,render:r=>`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
       {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
       {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
-    ],rows,{sort:{key:'p',dir:'asc'},limit:UI.aLimit,moreAct:'moreAsg',noAnim:1})}</div></div>`};
+    ],rows,{sort:{key:'p',dir:'asc'}})}</div></div>`};
 function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
   <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
   <div id="aprev"></div><div class="foot" style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" type="submit">${ic('plus',16)}Tambahkan</button></div></form>`}
 function updAssignPreview(){const f=$('#aform');if(!f)return;const fd=new FormData(f);const p=proj(fd.get('p')),e=person(fd.get('e'));const al=+fd.get('alloc');const r=$('input[type=range]',f);r.style.setProperty('--p',(al-5)/95*100+'%');$('output',f).textContent=al+'%';if(!p||!e)return;
-  const before=util(e.id);const add=aLoad({p:p.id,e:e.id,alloc:al})*100/(e.cap||100);const after=before+add;const dup=S.assigns.some(a=>a.p===p.id&&a.e===e.id);
+  const before=util(e.id);const add=aLoad({p:p.id,e:e.id,alloc:al})*100/effCap(e);const after=before+add;const dup=S.assigns.some(a=>a.p===p.id&&a.e===e.id);
   $('#aprev').innerHTML=`<div class="compare"><div><div class="muted" style="font-size:12px">Sekarang</div><div class="big" style="color:${ST_COLOR(before)}">${f0(before)}%</div>${badge(before)}</div><div class="muted">${ic('chev')}</div><div><div class="muted" style="font-size:12px">Setelah (+${f1(add)}%)</div><div class="big" style="color:${ST_COLOR(after)}">${f0(after)}%</div>${badge(after)}</div></div>
   <div class="formula">${f2(S.settings.phaseW[p.phase])} (${p.phase}) × ${f2((S.settings.roleF[e.role]||{})[p.phase]??1)} (${esc(ROLE_SHORT[e.role])}) × ${f2(S.settings.cxF[p.cx])} (${CX_LABEL[p.cx]}) × ${al}% × (1 − ${p.progress}%) = ${f1(aLoad({p:p.id,e:e.id,alloc:al}))}%</div>
   ${dup?`<div class="warnbox">${ic('warn',16)}<span>${esc(e.name)} sudah ada di ${esc(p.id)}. Alokasi akan ditambahkan ke penugasan yang ada.</span></div>`:''}
@@ -1194,23 +1187,38 @@ function ghCard(){
   if(GH)return `<div class="card mt"><div class="card-head"><div><h2>Sinkronisasi GitHub</h2><div class="sub">Data dibagikan lewat file ${esc(GH.path)} di repo privat ${esc(GH.owner)}/${esc(GH.repo)} (branch ${esc(GH.branch)})</div></div><div class="right" id="ghStatus">${ghStatusHtml()}</div></div>
     <div class="muted" style="font-size:13px;margin-bottom:14px">Perubahan dikirim otomatis beberapa detik setelah Anda berhenti mengedit. Perangkat lain memeriksa pembaruan tiap 30 detik. Token tersimpan hanya di browser perangkat ini.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="ghSync">${ic('reset',16)}Sinkronkan sekarang</button><button class="btn danger" data-act="ghOff">Putuskan</button></div></div>`;
-  const gh=`<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:14px">Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.</div>
+  return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:14px">Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.</div>
     <form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Harus repo Private, terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
     <div class="row2"><div class="field"><label>File data</label><input class="in" name="path" value="data.json"></div><div class="field"><label>Branch</label><input class="in" name="branch" value="main"></div></div>
-    <button class="btn primary" type="submit">Hubungkan</button></form></div>`;
-  return RO?`<details class="mt"><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Khusus pemilik: hubungkan GitHub untuk mengedit</summary>${gh}</details>`:gh}
+    <button class="btn primary" type="submit">Hubungkan</button></form></div>`}
+function explainCard(){const st=S.settings,lv=st.lvF||LVF0;
+  const ex={ph:'DED',role:'Civil/Structure',cx:3,al:50,pr:20,lvl:'Senior',cap:100};
+  const w=st.phaseW[ex.ph],rf=(st.roleF[ex.role]||{})[ex.ph]??1,cf=st.cxF[ex.cx],lf=lv[ex.lvl],ld=w*rf*cf*ex.al*(1-ex.pr/100),ec=ex.cap*lf,u=ld*100/ec;
+  const tf=S.people.reduce((s,e)=>s+(e.cap||100),0)/100,te=S.people.reduce((s,e)=>s+effCap(e),0)/100;
+  return `<div class="card mt"><h2>Cara membaca angka</h2><div class="sub" style="margin-bottom:14px">Penjelasan FTE, level, dan rumus perhitungan</div>
+  <div class="grid g2" style="gap:20px">
+   <div><h3 style="margin:0 0 6px">Apa itu FTE?</h3><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:20px">FTE (Full-Time Equivalent) adalah satuan beban kerja setara satu orang bekerja penuh waktu. 1,0 FTE berarti pekerjaan yang menghabiskan seluruh waktu satu personel level Middle. 0,5 FTE berarti setengahnya.</p>
+    <ul class="muted" style="margin:0;padding-left:18px;font-size:13px;line-height:21px"><li><b>Beban (FTE)</b> di halaman Proyek = jumlah beban semua penugasan proyek itu, dibagi 100. Sudah memakai bobot fase, peran, dan kompleksitas, jadi bukan sekadar jumlah orang.</li><li><b>Kapasitas tim</b> sekarang ${f2(tf)} FTE nominal, atau ${f2(te)} FTE efektif setelah faktor level.</li><li>Alokasi 100% pada fase DED, kompleksitas Sedang, semua faktor 1,0 menghasilkan 1,0 FTE.</li></ul></div>
+   <div><h3 style="margin:0 0 6px">Level personel</h3><p class="muted" style="margin:0 0 10px;font-size:13px;line-height:20px">Setiap personel punya level. Faktor level mengalikan kapasitas, jadi senior yang dialokasikan pada pekerjaan yang sama terlihat lebih longgar, dan junior lebih cepat penuh.</p>
+    <table class="t"><thead><tr><th>Level</th><th class="num">Faktor</th><th class="num">Kapasitas 100% menjadi</th></tr></thead><tbody>${LV.map(l=>`<tr><td>${LV_LABEL[l]}</td><td class="num">${f2(lv[l])}</td><td class="num">${f2(lv[l])} FTE</td></tr>`).join('')}</tbody></table></div>
+  </div>
+  <h3 style="margin:18px 0 6px">Contoh hitungan</h3>
+  <div class="formula">Personel Senior, Civil/Structure, kapasitas ${ex.cap}%, dialokasikan ${ex.al}% pada proyek DED kompleksitas Tinggi, progres ${ex.pr}%<br>Beban = ${f2(w)} × ${f2(rf)} × ${f2(cf)} × ${ex.al} × (1 − ${ex.pr/100}) = <b>${f2(ld)}</b> (${f2(ld/100)} FTE)<br>Kapasitas efektif = ${ex.cap} × ${f2(lf)} = <b>${f2(ec)}</b><br>Utilisasi = ${f2(ld)} ÷ ${f2(ec)} = <b>${f2(u)}%</b> → ${ST_LABEL[status(u)]}</div>
+  <ul class="muted" style="margin:12px 0 0;padding-left:18px;font-size:13px;line-height:21px"><li><b>Bobot fase</b>: DED paling berat, lalu FEED, Pre-FEED, dan Inisiasi.</li><li><b>Faktor peran</b>: seberapa besar keterlibatan sebuah disiplin pada tiap fase.</li><li><b>Alokasi</b>: porsi waktu personel pada proyek. Progres yang naik mengurangi beban yang tersisa.</li><li><b>Utilisasi</b>: di bawah ${st.thr.low}% Tersedia, ${st.thr.low} sampai ${st.thr.high}% Optimal, di atas ${st.thr.high}% Overload.</li></ul></div>`}
 PAGES.pengaturan=()=>{const st=S.settings;return `<div class="page-head"><div><h1>Pengaturan</h1><p>Bobot perhitungan dan pengelolaan data</p></div></div>
   <div class="grid g2">
    <div class="card"><h2>Bobot fase</h2><div class="sub" style="margin-bottom:16px">DED > FEED > Pre-FEED > Inisiasi</div>
     ${[...PH].reverse().map(ph=>`<div class="field"><label style="display:flex;align-items:center;gap:8px"><span class="sw" style="width:10px;height:10px;border-radius:2px;background:${PH_COLOR[ph]}"></span>${ph}</label><div class="range"><input type="range" min="0" max="1.5" step="0.05" value="${st.phaseW[ph]}" data-in="phaseW" data-k="${ph}" style="--p:${st.phaseW[ph]/1.5*100}%"><output>${f2(st.phaseW[ph])}</output></div></div>`).join('')}
     <h2 class="mt">Faktor kompleksitas</h2><div class="row2 mt" style="grid-template-columns:repeat(3,1fr)">${[1,2,3].map(c=>`<div class="field"><label>${CX_LABEL[c]}</label><input class="in" type="number" step="0.05" min="0" value="${st.cxF[c]}" data-in="cxF" data-k="${c}"></div>`).join('')}</div>
-    <h2>Ambang status</h2><div class="row2 mt"><div class="field"><label>Optimal mulai (%)</label><input class="in" type="number" value="${st.thr.low}" data-in="thr" data-k="low"></div><div class="field"><label>Overload di atas (%)</label><input class="in" type="number" value="${st.thr.high}" data-in="thr" data-k="high"></div></div>
+    <h2 class="mt">Faktor level personel</h2><div class="sub" style="margin:4px 0 12px">Mengalikan kapasitas: senior menyelesaikan lebih banyak pekerjaan per jam daripada junior</div><div class="row2 mt" style="grid-template-columns:repeat(3,1fr)">${LV.map(l=>`<div class="field"><label>${LV_LABEL[l]}</label><input class="in" type="number" step="0.05" min="0.1" value="${(st.lvF||LVF0)[l]}" data-in="lvF" data-k="${l}"></div>`).join('')}</div>
+    <h2 class="mt">Ambang status</h2><div class="row2 mt"><div class="field"><label>Optimal mulai (%)</label><input class="in" type="number" value="${st.thr.low}" data-in="thr" data-k="low"></div><div class="field"><label>Overload di atas (%)</label><input class="in" type="number" value="${st.thr.high}" data-in="thr" data-k="high"></div></div>
    </div>
    <div class="card"><h2>Faktor peran per fase</h2><div class="sub" style="margin-bottom:12px">Pengali beban tiap disiplin pada setiap fase</div>
     <div class="tw"><table class="t"><thead><tr><th>Disiplin</th>${PH.map(ph=>`<th class="num">${ph}</th>`).join('')}</tr></thead><tbody>${ROLES.map(r=>`<tr><td>${esc(r)}</td>${PH.map(ph=>`<td class="num"><input class="in rf" type="number" step="0.05" min="0" value="${(st.roleF[r]||{})[ph]??1}" data-in="roleF" data-r="${esc(r)}" data-k="${ph}"></td>`).join('')}</tr>`).join('')}</tbody></table></div>
-    <h2 class="mt">Rumus</h2><div class="formula mt">Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres)<br>Utilisasi = Σ Beban ÷ Kapasitas personel</div>
+    <h2 class="mt">Rumus</h2><div class="formula mt">Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres)<br>Kapasitas efektif = Kapasitas × Faktor level<br>Utilisasi = Σ Beban ÷ Kapasitas efektif</div>
    </div>
   </div>
+  ${explainCard()}
   ${ghCard()}
   <div class="card mt"><h2>Data</h2><div class="sub" style="margin-bottom:14px">Ekspor ke Excel, impor dari Excel dengan format yang sama, atau kembalikan data contoh</div>
    <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="tpl">${ic('dl',16)}Unduh template Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format template: sheet Proyek, Personel, dan Penugasan. Hasil ekspor juga bisa diimpor kembali.</div></div></div></div>`};
@@ -1224,7 +1232,7 @@ function openProject(id){const p=proj(id);if(!p)return;const as=S.assigns.filter
   <div class="card-head" style="margin:8px 0"><h2>Tim proyek</h2><div class="right">${avGroup(team(p.id),8)}</div></div>
   <div class="list-att">${as.map(a=>{const e=person(a.e);return e?`<div class="r">${avatar(e)}<div><div style="font-weight:600">${esc(e.name)}</div><div class="muted" style="font-size:12px">${esc(e.role)} · alokasi ${a.alloc}% · beban ${f1(aLoad(a))}%</div></div><div class="meter">${meter(util(e.id))}</div></div>`:''}).join('')||'<div class="empty">Belum ada anggota tim</div>'}</div>
   <div class="foot"><button class="btn danger" data-act="delProject" data-id="${p.id}">${ic('trash',16)}Hapus</button><button class="btn" data-act="editProject" data-id="${p.id}">${ic('edit',16)}Ubah</button><button class="btn primary" data-act="assignTo" data-id="${p.id}">${ic('plus',16)}Tambah anggota</button></div>`,{side:true})}
-function projectForm(p){if(RO)return;const n=p||{id:'P-'+String(S.projects.length+1).padStart(2,'0'),name:'',fac:'',phase:'FEED',cx:2,start:new Date().toISOString().slice(0,10),end:new Date(Date.now()+180*864e5).toISOString().slice(0,10),progress:0};
+function projectForm(p){const n=p||{id:'P-'+String(S.projects.length+1).padStart(2,'0'),name:'',fac:'',phase:'FEED',cx:2,start:new Date().toISOString().slice(0,10),end:new Date(Date.now()+180*864e5).toISOString().slice(0,10),progress:0};
   openDialog(`<div class="dh"><h3>${p?'Ubah proyek':'Proyek baru'}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div><form data-form="project" data-orig="${p?esc(p.id):''}">
   <div class="row2"><div class="field"><label>Kode</label><input class="in" name="id" value="${esc(n.id)}" required></div><div class="field"><label>Fasilitas</label><input class="in" name="fac" value="${esc(n.fac)}"></div></div>
   <div class="field"><label>Nama proyek</label><input class="in" name="name" value="${esc(n.name)}" required></div>
@@ -1233,15 +1241,15 @@ function projectForm(p){if(RO)return;const n=p||{id:'P-'+String(S.projects.lengt
   <div class="field"><label>Progres (%)</label><input class="in" type="number" name="progress" min="0" max="100" value="${n.progress}"></div>
   <div class="foot"><button type="button" class="btn" data-act="close">Batal</button><button class="btn primary" type="submit">Simpan</button></div></form>`)}
 function openPerson(id){const e=person(id);if(!e)return;const u=util(e.id);const as=S.assigns.filter(a=>a.e===id);
-  openDialog(`<div class="dh"><div style="display:flex;gap:12px;align-items:center">${avatar(e,'lg')}<div><h3>${esc(e.name)}</h3><div class="muted">${esc(e.role)} · kapasitas ${e.cap}%</div></div></div><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>
+  openDialog(`<div class="dh"><div style="display:flex;gap:12px;align-items:center">${avatar(e,'lg')}<div><h3>${esc(e.name)}</h3><div class="muted">${esc(e.role)} · ${esc(LV_LABEL[e.level||'Middle'])} · kapasitas ${e.cap}% (efektif ${f2(effCap(e)/100)} FTE)</div></div></div><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>
   <div style="display:flex;align-items:center;gap:16px">${ring(u)}<div>${badge(u)}<div class="muted" style="font-size:12px;margin-top:4px">Total alokasi ${as.reduce((s,a)=>s+a.alloc,0)}% · beban tertimbang ${f1(u)}%</div></div></div>
   ${spark(weeks(12).map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="muted" style="font-size:11px">Proyeksi 12 minggu</div>
   <h2 class="mt" style="font-size:16px">Penugasan</h2><div class="list-att mt">${as.map(a=>{const p=proj(a.p);return p?`<div class="r"><span class="chip"><i style="background:${PH_COLOR[p.phase]}"></i>${p.phase}</span><div><div style="font-weight:600">${esc(p.name)}</div><div class="muted" style="font-size:12px">${esc(p.id)} · alokasi ${a.alloc}% · progres ${p.progress}%</div></div><b style="margin-left:auto">${f1(aLoad(a))}%</b></div>`:''}).join('')||'<div class="empty">Belum ada penugasan</div>'}</div>
   <div class="foot"><button class="btn danger" data-act="delPerson" data-id="${e.id}">${ic('trash',16)}Hapus</button><button class="btn" data-act="editPerson" data-id="${e.id}">${ic('edit',16)}Ubah</button></div>`,{side:true});animateRings($('#ovl'))}
-function personForm(e){if(RO)return;const n=e||{name:'',role:'Civil/Structure',cap:100};
+function personForm(e){const n=e||{name:'',role:'Civil/Structure',level:'Middle',cap:100};
   openDialog(`<div class="dh"><h3>${e?'Ubah personel':'Personel baru'}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div><form data-form="person" data-orig="${e?e.id:''}">
   <div class="field"><label>Nama</label><input class="in" name="name" value="${esc(n.name)}" required></div>
-  <div class="row2"><div class="field"><label>Disiplin</label><select class="in" name="role">${ROLES.map(r=>`<option ${r===n.role?'selected':''}>${esc(r)}</option>`).join('')}</select></div><div class="field"><label>Kapasitas (%)</label><input class="in" type="number" name="cap" min="10" max="100" step="5" value="${n.cap}"></div><div class="hint">Mis. 50% untuk personel paruh waktu</div></div>
+  <div class="row2"><div class="field"><label>Disiplin</label><select class="in" name="role">${ROLES.map(r=>`<option ${r===n.role?'selected':''}>${esc(r)}</option>`).join('')}</select></div><div class="field"><label>Level</label><select class="in" name="level">${LV.map(l=>`<option value="${l}" ${l===(n.level||'Middle')?'selected':''}>${LV_LABEL[l]}</option>`).join('')}</select></div></div><div class="row2"><div class="field"><label>Kapasitas (%)</label><input class="in" type="number" name="cap" min="10" max="100" step="5" value="${n.cap}"></div><div class="hint">Mis. 50% untuk personel paruh waktu</div></div>
   <div class="foot"><button type="button" class="btn" data-act="close">Batal</button><button class="btn primary" type="submit">Simpan</button></div></form>`)}
 function confirmDlg(msg,onOk){openDialog(`<div class="dh"><h3>Konfirmasi</h3></div><p>${msg}</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb" style="background:var(--danger);border-color:var(--danger)">Hapus</button></div>`);$('#okb').onclick=()=>{closeDialog();onOk()}}
 
@@ -1267,7 +1275,7 @@ function phasePick(btn){$('.popover')?.remove();const p=proj(btn.dataset.id);con
 /* ---------- actions ---------- */
 let ART=null,DL=null;
 const ACT={
-  cmd:openCmd,close:closeDialog,moreAsg(){UI.aLimit+=50;render()},
+  cmd:openCmd,close:closeDialog,
   theme(){const t=getTheme()==='dark'?'light':'dark';try{localStorage.setItem('wl-theme',t)}catch(e){}applyTheme();if(route()==='analisis'||route()==='dashboard')render()},
   seg(b){const id=b.dataset.id,v=b.dataset.val;$$(`[data-seg="${id}"] button`).forEach(x=>x.classList.toggle('on',x===b));placePill(b.parentElement);
     if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}else if(id==='impmode'&&IMP){IMP.mode=v==='Gabung'?'merge':'replace';IMP.draw()}},
@@ -1275,13 +1283,13 @@ const ACT={
   lcToggle(b){UI.lcOff[b.dataset.r]=!UI.lcOff[b.dataset.r];const el=$('#lc');lineChart(el)},
   tree(b){UI.open[b.dataset.k]=!UI.open[b.dataset.k];$('#tree').innerHTML=treeTable()},
   treeAll(){const any=ROLES.some(r=>UI.open[r]);ROLES.forEach(r=>UI.open[r]=!any);S.people.forEach(e=>UI.open[e.id]=!any);$('#tree').innerHTML=treeTable()},
-  phasePick(b,e){e.stopPropagation();if(RO)return;phasePick(b)},
+  phasePick(b,e){e.stopPropagation();phasePick(b)},
   openProject(r,e){if(e.target.closest('[data-act="phasePick"],[data-hc]'))return;openProject(r.dataset.id)},
   openPerson(r){openPerson(r.dataset.id)},
   openProjectBtn(b){openProject(b.dataset.id)},
   newProject(){projectForm()},editProject(b){projectForm(proj(b.dataset.id))},
   newPerson(){personForm()},editPerson(b){personForm(person(b.dataset.id))},
-  newAssign(){if(RO)return;openDialog(`<div class="dh"><h3>Penugasan baru</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm()}`);updAssignPreview()},
+  newAssign(){openDialog(`<div class="dh"><h3>Penugasan baru</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm()}`);updAssignPreview()},
   assignTo(b){const id=b.dataset.id;openDialog(`<div class="dh"><h3>Tambah anggota ${esc(id)}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm(id)}`);updAssignPreview()},
   delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn');render()},
   delProject(b){const id=b.dataset.id;confirmDlg(`Hapus proyek <b>${esc(id)}</b> beserta seluruh penugasannya?`,()=>{S.projects=S.projects.filter(p=>p.id!==id);S.assigns=S.assigns.filter(a=>a.p!==id);markDirty();toast(`Proyek ${id} dihapus`,'warn');render()})},
@@ -1301,14 +1309,15 @@ const ACT={
   ghOff(){ghDisconnect();render();toast('Sinkronisasi diputus. Data tetap ada di perangkat ini.','warn')},
   reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan dikembalikan ke data contoh.</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Reset</button></div>`);$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
 };
-document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;if(RO&&EDIT_ACTS.has(t.dataset.act)){e.preventDefault();toast('Mode lihat saja: data tidak bisa diubah','warn');return}const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
 
 /* inputs */
 let rt=null;
-document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;if(RO&&k!=='aprev')return;const st=S.settings;
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;const st=S.settings;
   if(k==='aprev')updAssignPreview();
   else if(k==='phaseW'){st.phaseW[t.dataset.k]=+t.value;t.style.setProperty('--p',t.value/1.5*100+'%');t.nextElementSibling.textContent=f2(t.value);markDirty()}
   else if(k==='roleF'){if(t.value!==''){(st.roleF[t.dataset.r]=st.roleF[t.dataset.r]||{})[t.dataset.k]=+t.value;markDirty()}}
+  else if(k==='lvF'){if(t.value!==''){(st.lvF=st.lvF||{...LVF0})[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='cxF'){if(t.value!==''){st.cxF[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='thr'){if(t.value!==''){st.thr[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='pprog'){const p=proj(t.dataset.id);p.progress=+t.value;t.style.setProperty('--p',t.value+'%');t.nextElementSibling.textContent=t.value+'%';$('#pload').textContent=f2(projLoad(p.id)/100)+' FTE';markDirty();clearTimeout(rt);rt=setTimeout(()=>{const ov=$('#ovl');const sc=ov&&$('.dialog',ov).scrollTop;const m=$('#main').innerHTML=PAGES[route()]();(MOUNT[route()]||(()=>{}))();initSegs();if(ov)$('.dialog',ov).scrollTop=sc},400)}
@@ -1328,16 +1337,17 @@ document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;
 const norm=t=>String(t??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
 const XL_SYN={
   proyek:{code:['kode','kodeproyek','id','idproyek','projectcode','code'],name:['namaproyek','nama','proyek','project','projectname'],fac:['fasilitas','facility','lokasi'],phase:['fase','phase','tahap'],cx:['kompleksitas','complexity','tingkat'],start:['mulai','tanggalmulai','start','startdate'],end:['selesai','tanggalselesai','end','enddate','finish'],prog:['progres','progress']},
-  personel:{name:['nama','namapersonel','personel','name','pegawai'],role:['disiplin','discipline','peran','role'],cap:['kapasitas','capacity']},
+  personel:{name:['nama','namapersonel','personel','name','pegawai'],role:['disiplin','discipline','peran','role'],level:['level','jenjang','title','jabatan','seniority'],cap:['kapasitas','capacity']},
   penugasan:{code:['kodeproyek','kode','proyek','project','idproyek'],person:['namapersonel','personel','nama','name','pegawai'],alloc:['alokasi','allocation','persen'],role:['disiplin','discipline','peran']}
 };
-const XL_SHEET={proyek:['proyek','projects','project'],personel:['personel','people','pegawai','tim'],penugasan:['penugasan','assignments','alokasi'],bobot:['bobotfase','bobot','phaseweights'],peran:['faktorperan','roles'],kx:['kompleksitas','complexity']};
+const XL_SHEET={proyek:['proyek','projects','project'],personel:['personel','people','pegawai','tim'],penugasan:['penugasan','assignments','alokasi'],bobot:['bobotfase','bobot','phaseweights'],peran:['faktorperan','roles'],kx:['kompleksitas','complexity'],lvl:['faktorlevel','faktorjenjang']};
 /* a cell's value, whatever Excel kept it as: text, number, date, formula, rich text */
 const cv=v=>{if(v==null)return '';if(v instanceof Date)return v;if(typeof v==='object'){if('result' in v)return cv(v.result);if(v.richText)return v.richText.map(t=>t.text).join('');if('text' in v)return cv(v.text);if(v.error)return ''}return typeof v==='string'?v.trim():v};
 const toNum=v=>{if(typeof v==='number')return v;const s=String(v??'').replace('%','').replace(',','.').trim();if(s==='')return null;const n=Number(s);return isNaN(n)?NaN:n};
 const toPhase=v=>{const k=norm(v);if(!k)return null;if(/^(ini|init)/.test(k))return 'Inisiasi';if(/^(pre|pra)/.test(k)||k==='feedpre')return 'Pre-FEED';if(k==='feed')return 'FEED';if(/^(ded|detail)/.test(k))return 'DED';return undefined};
 const toCx=v=>{const k=norm(v);if(!k)return null;if(['1','rendah','low','r','l'].includes(k))return 1;if(['2','sedang','medium','med','s','m'].includes(k))return 2;if(['3','tinggi','high','t','h'].includes(k))return 3;return undefined};
 const toRole=v=>{const k=norm(v);if(!k)return null;if(/lead|^pm$|projectmanager|koordinator/.test(k))return 'Lead Project';if(/process|proses/.test(k))return 'Process';if(/mech|static|rotating|mekanik/.test(k))return 'Mechanical';if(/pip/.test(k))return 'Piping';if(/civil|struct|sipil/.test(k))return 'Civil/Structure';if(/elec|listrik/.test(k))return 'Electrical';if(/instr|control|kontrol/.test(k))return 'Instrument';if(/doccon|documentcontrol|dokumen|^dc$/.test(k))return 'DocCon';return undefined};
+const toLevel=v=>{const k=norm(v);if(!k)return null;if(/^(jun|jr|pemula)/.test(k))return 'Junior';if(/^(mid|pro|madya)/.test(k))return 'Middle';if(/^(sen|sr|ahli|utama)/.test(k))return 'Senior';return undefined};
 const MON={jan:1,januari:1,january:1,feb:2,februari:2,february:2,mar:3,maret:3,march:3,apr:4,april:4,mei:5,may:5,jun:6,juni:6,june:6,jul:7,juli:7,july:7,agu:8,agt:8,agustus:8,aug:8,august:8,sep:9,sept:9,september:9,okt:10,oktober:10,oct:10,october:10,nov:11,november:11,des:12,desember:12,dec:12,december:12};
 const iso=(y,m,d)=>{if(y<100)y+=2000;const t=new Date(Date.UTC(y,m-1,d));return t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===d?`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`:undefined};
 /* null = blank, undefined = not a date */
@@ -1384,6 +1394,8 @@ async function xlParse(buf){
   if(sb){P.sheets.push('Bobot Fase');const r=xlReadSheet(sb,{ph:['fase','phase'],w:['bobot','weight']},issues,'Bobot Fase');r&&r.rows.forEach(({n:rn,v})=>{const ph=toPhase(v.ph),w=toNum(v.w);if(!ph||w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Bobot Fase',row:rn,msg:`Baris tidak valid: fase "${v.ph}" bobot "${v.w}"`});else{patch.phaseW[ph]=w;n++}})}
   if(sr){P.sheets.push('Faktor Peran');const syn={role:['disiplin','discipline','peran']};PH.forEach(ph=>syn[ph]=[norm(ph)]);const r=xlReadSheet(sr,syn,issues,'Faktor Peran');r&&r.rows.forEach(({n:rn,v})=>{const ro=toRole(v.role);if(!ro){issues.push({lvl:'err',sheet:'Faktor Peran',row:rn,msg:`Disiplin "${v.role}" tidak dikenal`});return}PH.forEach(ph=>{if(v[ph]===''||v[ph]==null)return;const w=toNum(v[ph]);if(w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Faktor Peran',row:rn,msg:`Nilai ${ph} "${v[ph]}" tidak valid`});else{(patch.roleF[ro]=patch.roleF[ro]||{})[ph]=w;n++}})})}
   if(sk){P.sheets.push('Kompleksitas');const r=xlReadSheet(sk,{lv:['level','kompleksitas','tingkat'],f:['faktor','factor']},issues,'Kompleksitas');r&&r.rows.forEach(({n:rn,v})=>{const c=toCx(v.lv),w=toNum(v.f);if(!c||w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Kompleksitas',row:rn,msg:`Baris tidak valid: "${v.lv}" faktor "${v.f}"`});else{patch.cxF[c]=w;n++}})}
+  const sl=find('lvl');
+  if(sl){P.sheets.push('Faktor Level');patch.lvF={};const r=xlReadSheet(sl,{lv:['level','jenjang'],f:['faktor','factor']},issues,'Faktor Level');r&&r.rows.forEach(({n:rn,v})=>{const l=toLevel(v.lv),w=toNum(v.f);if(!l||w==null||isNaN(w)||w<=0)issues.push({lvl:'err',sheet:'Faktor Level',row:rn,msg:`Baris tidak valid: "${v.lv}" faktor "${v.f}"`});else{patch.lvF[l]=w;n++}})}
   P.patch=n?patch:null;
   return P}
 
@@ -1423,12 +1435,13 @@ function xlPlan(P,mode){
   (P.personel?.rows||[]).forEach(({n,v})=>{
     const name=String(v.name??'').trim().replace(/\s+/g,' ');if(!name)return err('Personel',n,'Nama kosong');
     if(seenE.has(slug(name)))warn('Personel',n,`${name} muncul dua kali, baris ini memperbarui yang sebelumnya`);seenE.add(slug(name));
-    const ro=toRole(v.role),cap=toNum(v.cap);
+    const ro=toRole(v.role),cap=toNum(v.cap),lv=toLevel(v.level);
     if(ro===undefined)return err('Personel',n,`Disiplin "${v.role}" tidak dikenal untuk ${name}`);
+    if(lv===undefined)return err('Personel',n,`Level "${v.level}" tidak dikenal untuk ${name}. Pilih Junior, Middle, atau Senior`);
     if(cap!==null&&(isNaN(cap)||cap<10||cap>100))return err('Personel',n,`Kapasitas ${name} harus 10 sampai 100`);
     const ex=byName.get(slug(name));
-    if(ex){const c={};if(ro)c.role=ro;if(cap!==null)c.cap=cap;if(Object.keys(c).some(k=>ex[k]!==c[k])){Object.assign(ex,c);stat.eUpd++}}
-    else{if(!ro)return err('Personel',n,`Personel baru ${name} butuh Disiplin`);const e={id:uid('e'),name,role:ro,cap:cap??100};R.people.push(e);byName.set(slug(name),e);stat.eNew++}
+    if(ex){const c={};if(ro)c.role=ro;if(lv)c.level=lv;if(cap!==null)c.cap=cap;if(Object.keys(c).some(k=>(ex[k]??(k==='level'?'Middle':undefined))!==c[k])){Object.assign(ex,c);stat.eUpd++}}
+    else{if(!ro)return err('Personel',n,`Personel baru ${name} butuh Disiplin`);const e={id:uid('e'),name,role:ro,level:lv||'Middle',cap:cap??100};R.people.push(e);byName.set(slug(name),e);stat.eNew++}
   });
 
   (P.penugasan?.rows||[]).forEach(({n,v})=>{
@@ -1442,7 +1455,7 @@ function xlPlan(P,mode){
     if(!e){
       const ro=toRole(v.role);
       if(!ro)return err('Penugasan',n,`Personel "${pn}" tidak ada. Tambahkan di sheet Personel, atau isi kolom Disiplin agar dibuat otomatis`);
-      e={id:uid('e'),name:pn,role:ro,cap:100};R.people.push(e);byName.set(slug(pn),e);stat.eNew++;warn('Penugasan',n,`${pn} dibuat otomatis sebagai ${ro} dengan kapasitas 100%`)}
+      e={id:uid('e'),name:pn,role:ro,level:'Middle',cap:100};R.people.push(e);byName.set(slug(pn),e);stat.eNew++;warn('Penugasan',n,`${pn} dibuat otomatis sebagai ${ro} dengan kapasitas 100%`)}
     const key=pj.id+'|'+e.id;if(seenA.has(key))warn('Penugasan',n,`${e.name} di ${pj.id} muncul dua kali, memakai yang terakhir`);seenA.add(key);
     const ex=R.assigns.find(a=>a.p===pj.id&&a.e===e.id);
     if(ex){if(ex.alloc!==al){ex.alloc=al;stat.aUpd++}}else{R.assigns.push({id:uid('a'),p:pj.id,e:e.id,alloc:al});stat.aNew++}
@@ -1455,6 +1468,7 @@ function xlPlan(P,mode){
   if(P.patch){const s=R.settings,pt=P.patch;
     PH.forEach(ph=>{if(pt.phaseW[ph]!==undefined&&s.phaseW[ph]!==pt.phaseW[ph]){s.phaseW[ph]=pt.phaseW[ph];stat.set++}});
     Object.entries(pt.roleF).forEach(([r,o])=>Object.entries(o).forEach(([ph,w])=>{s.roleF[r]=s.roleF[r]||{};if(s.roleF[r][ph]!==w){s.roleF[r][ph]=w;stat.set++}}));
+    if(pt.lvF){s.lvF=s.lvF||{...LVF0};Object.entries(pt.lvF).forEach(([l,w])=>{if(s.lvF[l]!==w){s.lvF[l]=w;stat.set++}})}
     Object.entries(pt.cxF).forEach(([c,w])=>{if(s.cxF[c]!==w){s.cxF[c]=w;stat.set++}})}
   /* how it would look: swap in, count, swap back, all in one tick */
   const old={projects:S.projects,people:S.people,assigns:S.assigns,settings:S.settings};
@@ -1527,6 +1541,7 @@ async function xlBook(kind){
     L('Sheet Personel','',{bold:1});
     L('Nama','Wajib. Dipakai untuk mencocokkan personel, jadi tulis konsisten.');
     L('Disiplin','Lead Project, Process, Mechanical, Piping, Civil/Structure, Electrical, Instrument, atau DocCon. Wajib untuk personel baru.');
+    L('Level','Junior, Middle (Professional), atau Senior. Kosong dianggap Middle. Level mengalikan kapasitas: senior lebih produktif dari junior (faktor ada di sheet Faktor Level).');
     L('Kapasitas (%)','10 sampai 100. Kosong dianggap 100. Isi 50 untuk personel paruh waktu.');
     L('Sheet Penugasan','',{bold:1});
     L('Kode Proyek','Wajib. Harus ada di sheet Proyek (atau sudah ada di aplikasi).');
@@ -1534,13 +1549,13 @@ async function xlBook(kind){
     L('Alokasi (%)','Wajib. Porsi waktu personel di proyek itu, 0 sampai 100.');
     L('Disiplin (opsional)','Isi hanya jika personel belum ada di mana pun. Aplikasi membuatnya otomatis dengan kapasitas 100%.');
     ws.addRow([]);L('SHEET OPSIONAL','',{head:1});
-    L('Bobot Fase, Faktor Peran, Kompleksitas','Berisi bobot perhitungan beban. Jika ada, bobot di aplikasi ikut diperbarui. Hapus sheet ini kalau Anda tidak ingin mengubah bobot.');
+    L('Bobot Fase, Faktor Peran, Kompleksitas, Faktor Level','Berisi bobot perhitungan beban. Jika ada, bobot di aplikasi ikut diperbarui. Hapus sheet ini kalau Anda tidak ingin mengubah bobot.');
     ws.addRow([]);L('CONTOH ISI','',{head:1});
     L('Proyek','P-11 | Pipeline Replacement | Duri | FEED | Sedang | 01/02/2027 | 30/06/2027 | 0');
-    L('Personel','Budi Santoso | Process | 100');
+    L('Personel','Budi Santoso | Process | Senior | 100');
     L('Penugasan','P-11 | Budi Santoso | 40');
     ws.addRow([]);L('RUMUS BEBAN','',{head:1});
-    L('','Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres). Utilisasi = jumlah beban ÷ kapasitas. Di bawah 70% Tersedia, 70 sampai 100% Optimal, di atas 100% Overload.');
+    L('','Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres). Kapasitas efektif = Kapasitas × Faktor level. Utilisasi = jumlah beban ÷ kapasitas efektif. Di bawah 70% Tersedia, 70 sampai 100% Optimal, di atas 100% Overload.');
   }
 
   const P=sheet('Proyek',[['Kode Proyek',14],['Nama Proyek',40],['Fasilitas',20],['Fase',14],['Kompleksitas',15],['Mulai',13],['Selesai',13],['Progres (%)',13]],
@@ -1551,8 +1566,8 @@ async function xlBook(kind){
   dv(P,7,{type:'date',operator:'greaterThan',formulae:[new Date(Date.UTC(2000,0,1))],errorTitle:'Tanggal',error:'Tulis tanggal, contoh 15/01/2027.'});
   dv(P,8,WHOLE(0,100));
 
-  const E=sheet('Personel',[['Nama',28],['Disiplin',20],['Kapasitas (%)',15]],data?S.people.map(e=>[e.name,e.role,e.cap]):[]);
-  dv(E,2,LIST(ROLES));dv(E,3,WHOLE(10,100));
+  const E=sheet('Personel',[['Nama',28],['Disiplin',20],['Level',14],['Kapasitas (%)',15]],data?S.people.map(e=>[e.name,e.role,e.level||'Middle',e.cap]):[]);
+  dv(E,2,LIST(ROLES));dv(E,3,LIST(LV));dv(E,4,WHOLE(10,100));
 
   const A=sheet('Penugasan',[['Kode Proyek',14],['Nama Personel',28],['Alokasi (%)',14],['Disiplin (opsional)',22]],
     data?S.assigns.map(a=>{const e=person(a.e),p=proj(a.p);return e&&p?[p.id,e.name,a.alloc,e.role]:null}).filter(Boolean):[]);
@@ -1562,11 +1577,12 @@ async function xlBook(kind){
 
   sheet('Bobot Fase',[['Fase',16],['Bobot',12]],PH.slice().reverse().map(ph=>[ph,S.settings.phaseW[ph]]),'FF616161');
   sheet('Faktor Peran',[['Disiplin',20],...PH.map(ph=>[ph,12])],ROLES.map(r=>[r,...PH.map(ph=>(S.settings.roleF[r]||{})[ph]??1)]),'FF616161');
+  sheet('Faktor Level',[['Level',16],['Faktor',12]],LV.map(l=>[l,(S.settings.lvF||LVF0)[l]]),'FF616161');
   sheet('Kompleksitas',[['Level',16],['Faktor',12]],[1,2,3].map(c=>[CX_LABEL[c],S.settings.cxF[c]]),'FF616161');
 
   if(data){
-    sheet('Ringkasan Utilisasi',[['Personel',28],['Disiplin',20],['Kapasitas (%)',14],['Total alokasi (%)',17],['Utilisasi (%)',14],['Status',12]],S.people.map(e=>{const u=util(e.id);return [e.name,e.role,e.cap,S.assigns.filter(a=>a.e===e.id).reduce((s,a)=>s+a.alloc,0),+u.toFixed(1),ST_LABEL[status(u)]]}),'FF8A8A8A');
-    sheet('Per Disiplin',[['Disiplin',20],['Utilisasi (%)',14],...PH.map(ph=>[ph+' (%)',14])],ROLES.map(r=>{const cap=S.people.filter(e=>e.role===r).reduce((s,e)=>s+(e.cap||100),0)||100;return [r,+roleUtil(r).toFixed(1),...PH.map(ph=>+(S.assigns.filter(a=>person(a.e)?.role===r&&proj(a.p)?.phase===ph).reduce((s,a)=>s+aLoad(a),0)*100/cap).toFixed(1))]}),'FF8A8A8A');
+    sheet('Ringkasan Utilisasi',[['Personel',28],['Disiplin',20],['Level',12],['Kapasitas (%)',14],['Kapasitas efektif (%)',20],['Total alokasi (%)',17],['Utilisasi (%)',14],['Status',12]],S.people.map(e=>{const u=util(e.id);return [e.name,e.role,e.level||'Middle',e.cap,+effCap(e).toFixed(1),S.assigns.filter(a=>a.e===e.id).reduce((s,a)=>s+a.alloc,0),+u.toFixed(1),ST_LABEL[status(u)]]}),'FF8A8A8A');
+    sheet('Per Disiplin',[['Disiplin',20],['Utilisasi (%)',14],...PH.map(ph=>[ph+' (%)',14])],ROLES.map(r=>{const cap=S.people.filter(e=>e.role===r).reduce((s,e)=>s+effCap(e),0)||100;return [r,+roleUtil(r).toFixed(1),...PH.map(ph=>+(S.assigns.filter(a=>person(a.e)?.role===r&&proj(a.p)?.phase===ph).reduce((s,a)=>s+aLoad(a),0)*100/cap).toFixed(1))]}),'FF8A8A8A');
   }
   return wb}
 async function xlDownload(wb,name){
@@ -1577,7 +1593,7 @@ async function xlDownload(wb,name){
   const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('File Excel diunduh')}
 
 /* forms */
-document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();if(RO&&f.dataset.form!=='gh')return;const d=Object.fromEntries(new FormData(f));
+document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();const d=Object.fromEntries(new FormData(f));
   if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);if(ex)ex.alloc=clamp(ex.alloc+al,0,100);else S.assigns.push({id:uid('a'),p:d.p,e:d.e,alloc:al});markDirty();const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');if($('#ovl'))closeDialog();render()}
   if(f.dataset.form==='project'){const orig=f.dataset.orig;const id=d.id.trim();if(!id||(id!==orig&&S.projects.some(p=>p.id===id))){f.querySelector('[name=id]').classList.add('err');toast('Kode proyek sudah dipakai','err');return}
     if(d.end<d.start){f.querySelector('[name=end]').classList.add('err');toast('Tanggal selesai harus setelah mulai','err');return}
@@ -1585,7 +1601,7 @@ document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)retur
     if(orig){const i=S.projects.findIndex(p=>p.id===orig);S.projects[i]=n;if(orig!==id)S.assigns.forEach(a=>{if(a.p===orig)a.p=id})}else S.projects.push(n);
     markDirty();closeDialog();toast(orig?'Proyek diperbarui':'Proyek ditambahkan');render()}
   if(f.dataset.form==='gh'){ghConnect(d);return}
-  if(f.dataset.form==='person'){const orig=f.dataset.orig;const n={name:d.name.trim(),role:d.role,cap:clamp(+d.cap||100,10,100)};if(orig)Object.assign(person(orig),n);else S.people.push({id:uid('e'),...n});markDirty();closeDialog();toast(orig?'Personel diperbarui':'Personel ditambahkan');render()}
+  if(f.dataset.form==='person'){const orig=f.dataset.orig;const n={name:d.name.trim(),role:d.role,level:LV.includes(d.level)?d.level:'Middle',cap:clamp(+d.cap||100,10,100)};if(orig)Object.assign(person(orig),n);else S.people.push({id:uid('e'),...n});markDirty();closeDialog();toast(orig?'Personel diperbarui':'Personel ditambahkan');render()}
 });
 ['dragover','drop'].forEach(t=>document.addEventListener(t,e=>{if(!e.target.closest('.upl-zone'))e.preventDefault()}));
 addEventListener('resize',()=>{initSegs();const l=$('#lc');if(l)lineChart(l)});
@@ -2284,49 +2300,15 @@ function UploadDropzone(root, {
 function mountCtx(){const el=$('#ctx');if(!el)return;const K=[['ded','DED'],['feed','FEED'],['pre','Pre-FEED'],['ini','Inisiasi']];
   const raw=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+a.alloc,0)/10);
   const wt=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+aLoad(a),0)/10);
-  ContextMeter(el,{kinds:K.map(([id,name])=>({id,name})),sizesRaw:raw,sizesWeighted:wt,window:Math.round(S.people.reduce((s,e)=>s+(e.cap||100),0)/10)})}
+  ContextMeter(el,{kinds:K.map(([id,name])=>({id,name})),sizesRaw:raw,sizesWeighted:wt,window:Math.round(S.people.reduce((s,e)=>s+effCap(e),0)/10)})}
 function mountCsw(){const el=$('#csw');if(!el)return;const top=[...S.projects].sort((a,b)=>projLoad(b.id)-projLoad(a.id)).slice(0,4);if(!top.length){el.innerHTML='<div class="empty">Belum ada proyek</div>';return}
   const shade=c=>`linear-gradient(160deg, ${c}, color-mix(in srgb, ${c} 62%, #000))`;
   CardSwap(el,top.map(p=>({id:p.id,title:`${p.phase} · ${esc(p.id)}`,bg:shade(PH_COLOR[p.phase]),html:`<span class="k">${esc(p.id)} · ${esc(p.fac)}</span><span class="n">${esc(p.name)}</span><span class="f">${team(p.id).length} personel · ${CX_LABEL[p.cx]}</span><span class="big">${f2(projLoad(p.id)/100)}<small>FTE</small></span><span class="f">Progres ${p.progress}%</span><span class="bar"><i style="width:${p.progress}%"></i></span>`})),
   {onFront:id=>{const p=proj(id),i=top.findIndex(x=>x.id===id);$('#cswInfo').innerHTML=`<span class="muted">${i+1}/${top.length}</span><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b><button class="btn sm" data-act="openProjectBtn" data-id="${p.id}">Detail</button>`}})}
 
 /* ---------- boot ---------- */
-/* ---------- mode lihat saja ---------- */
-function lockRO(){if(!RO)return;$$('[data-in]').forEach(el=>{const k=el.dataset.in;if(k!=='aprev'&&k!=='aFilter'&&!el.disabled)el.disabled=true})}
-/* di claude.ai: penonton tanpa hak edit */
-function enterRO(){RO=true;document.documentElement.setAttribute('data-ro','');
-  try{localStorage.removeItem('wl-draft')}catch(e){}
-  let emb=null;try{emb=JSON.parse(document.getElementById('wl-state').textContent)}catch(e){}
-  S=emb||seed();DIRTY=false;
-  new MutationObserver(lockRO).observe(document.body,{childList:true,subtree:true});
-  closeDialog();render();lockRO();updateSave()}
-/* di GitHub Pages: perangkat tanpa token membaca data publik, hanya lihat, dan menyegarkan tiap menit */
-const VW={url:'https://raw.githubusercontent.com/Malegiw/workload-data/main/data.json',last:'',timer:0,first:true};
-function vwOverlay(html){let o=$('#vwLoad');if(!o){o=document.createElement('div');o.id='vwLoad';o.style.cssText='position:fixed;inset:48px 0 0 0;z-index:40;display:grid;place-items:center;background:var(--background);text-align:center;padding:24px';document.body.appendChild(o)}o.innerHTML=html}
-function vwHide(){$('#vwLoad')?.remove()}
-async function vwFetch(){
-  try{
-    const r=await fetch(VW.url+'?t='+Date.now(),{cache:'no-store'});
-    if(!r.ok)throw new Error(r.status===404?'Data belum dibuka untuk umum':'Server menjawab '+r.status);
-    const txt=await r.text();let o;try{o=JSON.parse(txt)}catch(e){throw new Error('Isi data tidak valid')}
-    if(!ghValid(o))throw new Error('Isi data bukan data Workload');
-    if(!RO)return;
-    if(txt!==VW.last){VW.last=txt;o.settings=Object.assign({},seed().settings,o.settings);S=o;DIRTY=false;render();lockRO();if(!VW.first)toast('Data diperbarui')}
-    VW.first=false;vwHide()
-  }catch(e){
-    if(VW.first&&RO){vwOverlay(`<div><h2 style="margin:0 0 6px">Data belum bisa dimuat</h2><p class="muted" style="margin:0 0 14px">${esc(e.message||'Periksa koneksi internet')}</p><button class="btn primary" id="vwRetry">Coba lagi</button></div>`);$('#vwRetry').onclick=()=>{vwOverlay('<div class="muted">Memuat data…</div>');vwFetch()}}
-  }
-}
-function vwBoot(){RO=true;document.documentElement.setAttribute('data-ro','');try{localStorage.removeItem('wl-draft')}catch(e){}
-  new MutationObserver(lockRO).observe(document.body,{childList:true,subtree:true});
-  vwOverlay('<div class="muted">Memuat data…</div>');vwFetch();
-  VW.timer=setInterval(()=>{if(!document.hidden&&RO)vwFetch()},60000);
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&RO)vwFetch()})}
-function vwStop(){clearInterval(VW.timer);vwHide();if(!RO)return;RO=false;document.documentElement.removeAttribute('data-ro')}
-
 shell();Particles($('#logoCv'),{size:36});render();ghBoot();
-if(!window.claude&&!GH)vwBoot();
-(async()=>{try{if(window.claude&&claude.use){ART=await claude.use('artifact');DL=await claude.use('downloads');const U=await claude.use('user');if(!(U&&U.canEdit()))enterRO()}}catch(e){}})();
+(async()=>{try{if(window.claude&&claude.use){ART=await claude.use('artifact');DL=await claude.use('downloads')}}catch(e){}})();
 </script>
 </body>
 </html>
