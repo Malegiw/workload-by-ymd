@@ -1155,7 +1155,7 @@ PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'
   <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · ${esc(e.level||'Middle')} · ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
 MOUNT.personel=()=>animateRings();
 
-PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
+PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const dq=new URLSearchParams(location.search);const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
   return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions">${mob?`<button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button>`:''}<button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
   <div class="grid g-12">
     ${mob?'':`<div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>`}
@@ -1165,10 +1165,10 @@ PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=U
       {key:'phase',label:'Fase',val:r=>PH.indexOf(r.pp.phase),render:r=>`<span class="chip"><i style="background:${PH_COLOR[r.pp.phase]}"></i>${r.pp.phase}</span>`},
       {key:'e',label:'Personel',val:r=>r.ee.name,render:r=>`<span style="display:inline-flex;align-items:center;gap:8px">${avatar(r.ee)}${esc(r.ee.name)}</span>`},
       {key:'role',label:'Disiplin',val:r=>r.ee.role,render:r=>esc(ROLE_SHORT[r.ee.role])},
-      {key:'alloc',label:'Alokasi',num:1,render:r=>`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
+      {key:'alloc',label:'Alokasi',num:1,render:r=>dq.has('noinput')?`${r.alloc}%`:`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
       {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
       {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
-    ],rows,{sort:{key:'p',dir:'asc'},limit:UI.aLimit,moreAct:'moreAsg',noAnim:1})}</div></div>`};
+    ],rows,{sort:{key:'p',dir:'asc'},limit:dq.has('rows')?+dq.get('rows'):UI.aLimit,moreAct:'moreAsg',noAnim:1})}</div></div>`};
 function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
   <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
