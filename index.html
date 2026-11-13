@@ -894,16 +894,17 @@ async function ghConnect(d){
   GH={owner:m[1],repo:m[2],path:(String(d.path||'data.json').trim()||'data.json').replace(/^\//,''),branch:String(d.branch||'main').trim()||'main',token};
   try{const r=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
     if(!r.ok){const e=await ghErr(r);GH=null;toast(e.message,'err');return}
-    const info=await r.json();if(!info.private&&!confirm_public()){GH=null;return}
+    const info=await r.json();GH.pub=!info.private
   }catch(e){GH=null;toast(ghNet(e).message,'err');return}
   try{localStorage.setItem('wl-gh',JSON.stringify(GH));localStorage.removeItem('wl-gh-sha')}catch(e){}
+  if(GH.pub)toast('Repo data bersifat Public: siapa pun bisa membaca datanya. Pastikan Anda memang menginginkannya.','warn')
   ghSha=null;ghEtag=null;
   /* a device that already holds edits asks before it takes the remote's */
   DIRTY=S.updatedAt>0;ghFlag(DIRTY);
   ghStart();await ghPull(true);render();if(SYNC==='ok')toast('Tersambung ke GitHub')
 }
 /* a public data repo would put the names and workloads on the open web */
-function confirm_public(){toast('Repo data harus Private. Ubah di Settings repo, bagian Danger Zone → Change visibility.','err');return false}
+
 function ghStart(){clearInterval(ghPoll);if(!GH||!GHOK)return;ghPoll=setInterval(()=>{if(document.hidden||ghBusy||conflictOpen)return;if(DIRTY)ghPush();else ghPull()},30000)}
 function ghDisconnect(){clearInterval(ghPoll);clearTimeout(ghTimer);GH=null;ghSha=null;ghEtag=null;SYNC='off';SYNC_MSG='';try{['wl-gh','wl-gh-sha','wl-gh-dirty'].forEach(k=>localStorage.removeItem(k))}catch(e){}updateSave()}
 function ghBoot(){if(!GH||!GHOK)return;ghStart();ghPull(true);
@@ -1188,7 +1189,7 @@ function ghCard(){
     <div class="muted" style="font-size:13px;margin-bottom:14px">Perubahan dikirim otomatis beberapa detik setelah Anda berhenti mengedit. Perangkat lain memeriksa pembaruan tiap 30 detik. Token tersimpan hanya di browser perangkat ini.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="ghSync">${ic('reset',16)}Sinkronkan sekarang</button><button class="btn danger" data-act="ghOff">Putuskan</button></div></div>`;
   return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:14px">Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.</div>
-    <form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Harus repo Private, terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
+    <form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Boleh Private atau Public. Public berarti semua orang bisa membaca data. Terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
     <div class="row2"><div class="field"><label>File data</label><input class="in" name="path" value="data.json"></div><div class="field"><label>Branch</label><input class="in" name="branch" value="main"></div></div>
     <button class="btn primary" type="submit">Hubungkan</button></form></div>`}
 function explainCard(){const st=S.settings,lv=st.lvF||LVF0;
