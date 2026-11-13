@@ -1,0 +1,1923 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8" data-k>
+<meta name="viewport" content="width=device-width, initial-scale=1" data-k>
+<title data-k>Workload by YMD</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" data-k></script>
+<style data-k>
+:root{
+  --background:#F5F5F5;--surface:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F0;
+  --foreground:#242424;--text-secondary:#616161;--text-tertiary:#8A8A8A;--border:#E0E0E0;--border-strong:#D1D1D1;
+  --accent:#0F6CBD;--accent-hover:#115EA3;--accent-soft:#EBF3FC;--on-accent:#fff;
+  --success:#107C10;--success-soft:#F1FAF1;--warning:#BC4B09;--warning-soft:#FFF9F5;--danger:#C50F1F;--danger-soft:#FDF3F4;
+  --shadow-2:0 0 2px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.14);
+  --shadow-4:0 0 2px rgba(0,0,0,.12),0 2px 4px rgba(0,0,0,.14);
+  --shadow-16:0 0 2px rgba(0,0,0,.12),0 8px 16px rgba(0,0,0,.14);
+  --shadow-28:0 0 8px rgba(0,0,0,.12),0 14px 28px rgba(0,0,0,.14);
+  --r:8px;--r-sm:4px;
+  --font:"Segoe UI Variable Text","Segoe UI Variable","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --ease:cubic-bezier(.33,0,.1,1);--snappy:cubic-bezier(.2,.9,.3,1.2);
+}
+[data-theme="dark"]{
+  --background:#1F1F1F;--surface:#292929;--surface-2:#2E2E2E;--surface-3:#383838;
+  --foreground:#FFFFFF;--text-secondary:#ADADAD;--text-tertiary:#8A8A8A;--border:#3D3D3D;--border-strong:#525252;
+  --accent:#479EF5;--accent-hover:#62ABF5;--accent-soft:#0E2A47;--on-accent:#0A0A0A;
+  --success:#54B054;--success-soft:#0F2A0F;--warning:#F7894A;--warning-soft:#3A1E0E;--danger:#F1707B;--danger-soft:#3B1418;
+  --shadow-4:0 0 2px rgba(0,0,0,.24),0 2px 4px rgba(0,0,0,.28);
+  --shadow-16:0 0 2px rgba(0,0,0,.24),0 8px 16px rgba(0,0,0,.28);
+  --shadow-28:0 0 8px rgba(0,0,0,.24),0 14px 28px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:var(--font);font-size:14px;line-height:20px;color:var(--foreground);background:var(--background);-webkit-font-smoothing:antialiased;transition:background .25s var(--ease),color .25s var(--ease)}
+button,input,select{font:inherit;color:inherit}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:48px 1fr;height:100vh;height:100dvh}
+.topbar{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--accent);color:#fff}
+[data-theme="dark"] .topbar{background:#0C3B5E}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;white-space:nowrap}
+.brand small{font-weight:400;opacity:.8}
+.search-btn{flex:1;max-width:440px;margin:0 auto;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:0;border-radius:var(--r-sm);background:rgba(255,255,255,.92);color:#616161;cursor:pointer;text-align:left}
+[data-theme="dark"] .search-btn{background:#292929;color:#ADADAD}
+.search-btn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-btn kbd{margin-left:auto;font-family:inherit;font-size:11px;padding:0 6px;border:1px solid #D1D1D1;border-radius:4px;color:#8A8A8A}
+.top-actions{display:flex;align-items:center;gap:8px}
+.save-btn{display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid rgba(255,255,255,.5);background:transparent;color:#fff;cursor:pointer;transition:background .15s}
+.save-btn:hover{background:rgba(255,255,255,.12)}
+.save-btn.dirty{background:#fff;color:#0F6CBD;border-color:#fff}
+.save-btn .dot{width:8px;height:8px;border-radius:50%;background:#C50F1F;display:none}
+.save-btn.dirty .dot{display:block;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{transform:scale(1.4);opacity:.6}}
+/* liquid toggle */
+.ltoggle{position:relative;width:52px;height:28px;border-radius:14px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);cursor:pointer;padding:0;overflow:hidden}
+.ltoggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:10px;background:#fff;transition:left .45s var(--snappy),width .25s var(--ease);display:grid;place-items:center;color:#0F6CBD}
+.ltoggle:active .knob{width:28px}
+[data-theme="dark"] .ltoggle .knob{left:27px;background:#479EF5;color:#0A0A0A}
+[data-theme="dark"] .ltoggle:active .knob{left:19px}
+.nav{background:var(--surface);border-right:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.nav a{position:relative;display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;border-radius:var(--r-sm);color:var(--foreground);text-decoration:none;transition:background .12s}
+.nav a:hover{background:var(--surface-3)}
+.nav a.on{background:var(--accent-soft);font-weight:600;color:var(--accent)}
+.nav a.on::before{content:"";position:absolute;left:0;top:10px;bottom:10px;width:3px;border-radius:2px;background:var(--accent);animation:grow .3s var(--snappy)}
+@keyframes grow{from{transform:scaleY(0)}}
+.nav svg{width:20px;height:20px;flex:none}
+.nav .sn{display:none}
+.nav .foot{margin-top:auto;padding:12px;font-size:12px;color:var(--text-tertiary);line-height:16px}
+main{overflow:auto;padding:24px 28px 40px;min-width:0}
+.page-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.page-head h1{font-size:24px;line-height:32px;font-weight:600;margin:0}
+.page-head p{margin:2px 0 0;color:var(--text-secondary)}
+.page-head .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;gap:16px}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g-12{grid-template-columns:minmax(0,1fr) minmax(0,2fr)}
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-4);padding:16px;min-width:0;animation:rise .4s var(--ease) both}
+.card:nth-child(2){animation-delay:.04s}.card:nth-child(3){animation-delay:.08s}.card:nth-child(4){animation-delay:.12s}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
+.card h2{font-size:16px;line-height:22px;font-weight:600;margin:0}
+.card .sub{color:var(--text-secondary);font-size:12px;margin-top:2px}
+.card-head{display:flex;align-items:flex-start;gap:8px;margin-bottom:14px}
+.card-head .right{margin-left:auto;display:flex;gap:6px;align-items:center}
+.mt{margin-top:16px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 12px;border-radius:var(--r-sm);border:1px solid var(--border-strong);background:var(--surface);cursor:pointer;font-weight:600;transition:background .12s,transform .12s var(--snappy);white-space:nowrap}
+.btn:hover{background:var(--surface-3)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.primary:hover{background:var(--accent-hover)}
+.btn.subtle{border-color:transparent;background:transparent}
+.btn.subtle:hover{background:var(--surface-3)}
+.btn.danger{color:var(--danger)}
+.btn.sm{height:24px;padding:0 8px;font-size:12px}
+.btn svg{width:16px;height:16px}
+.icon-btn{width:32px;padding:0}
+/* segmented / jelly tabs */
+.seg{position:relative;display:inline-flex;background:var(--surface-3);border-radius:var(--r-sm);padding:2px;gap:2px;flex-wrap:nowrap;overflow:auto;max-width:100%}
+.seg button{position:relative;z-index:1;border:0;background:transparent;height:28px;padding:0 10px;border-radius:3px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;font-size:13px}
+.seg button.on{color:var(--foreground);font-weight:600}
+.seg .pill{position:absolute;z-index:0;top:2px;height:28px;border-radius:3px;background:var(--surface);box-shadow:var(--shadow-2);transition:left .4s var(--snappy),width .4s var(--snappy)}
+/* KPI */
+.kpi{display:flex;flex-direction:column;gap:6px}
+.kpi .lab{color:var(--text-secondary);font-size:13px;display:flex;align-items:center;gap:6px}
+.kpi .val{font-size:32px;line-height:40px;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .val small{font-size:16px;font-weight:400;color:var(--text-secondary)}
+.kpi .row{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;min-height:32px}
+.badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.b-avail{background:var(--accent-soft);color:var(--accent)}
+.b-opt{background:var(--success-soft);color:var(--success)}
+.b-over{background:var(--danger-soft);color:var(--danger)}
+.b-neutral{background:var(--surface-3);color:var(--text-secondary)}
+/* donut */
+.donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.donut{width:190px;height:190px;flex:none}
+.donut path{transition:opacity .15s,transform .2s var(--ease);transform-origin:100px 100px;cursor:pointer}
+.donut path:hover{transform:scale(1.04)}
+.donut .d-num{font-size:30px;font-weight:600;fill:var(--foreground);font-variant-numeric:tabular-nums}
+.donut .d-lab{font-size:11px;fill:var(--text-secondary)}
+.legend{display:flex;flex-direction:column;gap:8px;flex:1;min-width:150px}
+.legend .li{display:flex;align-items:center;gap:8px;font-size:13px}
+.legend .sw{width:10px;height:10px;border-radius:2px;flex:none}
+.legend .li b{margin-left:auto;font-variant-numeric:tabular-nums}
+/* bar chart */
+.bc{display:flex;flex-direction:column;gap:6px}
+.bc-plot{position:relative;height:220px;display:flex;align-items:flex-end;gap:10px;padding-left:34px;border-bottom:1px solid var(--border)}
+.bc-mark{position:absolute;left:34px;right:0;border-top:1px dashed var(--border-strong)}
+.bc-mark span{position:absolute;left:-34px;top:-9px;font-size:11px;color:var(--text-tertiary)}
+.bc-mark.hi{border-top-color:var(--danger)}
+.bc-col{flex:1;height:100%;display:flex;align-items:flex-end;justify-content:center;cursor:pointer;border-radius:4px 4px 0 0;transition:background .12s}
+.bc-col:hover,.bc-col.act{background:var(--surface-3)}
+.bc-bar{width:70%;max-width:44px;border-radius:4px 4px 0 0;transition:height .8s var(--snappy);position:relative}
+.bc-bar em{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:11px;font-weight:600;color:var(--text-secondary);white-space:nowrap}
+.bc-x{display:flex;gap:10px;padding-left:34px}
+.bc-x span{flex:1;text-align:center;font-size:11px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* heatmap */
+.hm{display:grid;gap:3px;font-size:12px;min-width:640px}
+.hm-wrap{overflow:auto}
+.hm .hn{display:flex;align-items:center;gap:8px;white-space:nowrap;overflow:hidden;padding-right:8px}
+.hm .hh{font-size:11px;color:var(--text-secondary);text-align:center}
+.hm .hc{height:26px;border-radius:3px;transition:transform .15s var(--snappy),box-shadow .15s;display:grid;place-items:center;font-size:10px;font-weight:600;color:transparent;cursor:default}
+.hm .hc:hover{transform:scale(1.18);box-shadow:var(--shadow-16);z-index:2;position:relative;color:var(--foreground)}
+.hm-scale{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary)}
+.hm-scale i{width:18px;height:10px;border-radius:2px;display:block}
+/* stacked bars */
+.sb{display:flex;flex-direction:column;gap:10px}
+.sb-row{display:grid;grid-template-columns:120px 1fr 52px;align-items:center;gap:10px;font-size:13px}
+.sb-track{position:relative;height:22px;background:var(--surface-3);border-radius:4px;overflow:hidden;display:flex}
+.sb-seg{height:100%;width:0;transition:width .9s var(--snappy);cursor:pointer}
+.sb-seg:hover{filter:brightness(1.12)}
+.sb-100{position:absolute;top:0;bottom:0;border-left:2px dashed var(--danger);opacity:.7}
+.sb-row b{text-align:right;font-variant-numeric:tabular-nums}
+/* waffle */
+.waffle{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;width:100%;max-width:260px;aspect-ratio:1}
+.waffle i{border-radius:3px;background:var(--surface-3);transition:background-color .5s var(--ease),transform .5s var(--snappy)}
+/* line chart */
+.lc{position:relative}
+.lc svg{width:100%;height:auto;display:block;overflow:visible}
+.lc .grid-l{stroke:var(--border);stroke-width:1}
+.lc .ax{font-size:10px;fill:var(--text-tertiary)}
+.lc path.s{fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:opacity .25s}
+.lc .xh{stroke:var(--text-tertiary);stroke-dasharray:3 3;opacity:0;transition:opacity .15s}
+.lc-leg{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.lc-leg button{display:flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--surface);border-radius:12px;height:24px;padding:0 10px;font-size:12px;cursor:pointer;transition:opacity .2s}
+.lc-leg button.off{opacity:.4}
+.lc-leg i{width:8px;height:8px;border-radius:50%}
+/* tables */
+.tw{overflow:auto;border-radius:var(--r-sm)}
+table.t{width:100%;border-collapse:collapse;font-size:13px}
+.t th{position:sticky;top:0;background:var(--surface);text-align:left;font-weight:600;color:var(--text-secondary);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;user-select:none}
+.t th.s{cursor:pointer}
+.t th.s:hover{color:var(--foreground)}
+.t th .ar{display:inline-block;margin-left:4px;transition:transform .25s var(--snappy);opacity:.35}
+.t th.sorted .ar{opacity:1}
+.t th.desc .ar{transform:rotate(180deg)}
+.t td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.t tr{transition:background .1s}
+.t tbody tr:hover{background:var(--surface-2)}
+.t tr.click{cursor:pointer}
+.t .num{text-align:right;font-variant-numeric:tabular-nums}
+.t tr.enter{animation:rowin .35s var(--ease) both}
+@keyframes rowin{from{opacity:0;transform:translateY(-4px)}}
+.muted{color:var(--text-secondary)}
+.code{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--text-secondary)}
+/* phase pill & status picker */
+.phase{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:transform .15s var(--snappy)}
+.phase:hover{transform:translateY(-1px);box-shadow:var(--shadow-2)}
+.phase i{width:8px;height:8px;border-radius:50%}
+.popover{position:fixed;z-index:60;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-16);padding:4px;min-width:180px;animation:pop .2s var(--snappy);transform-origin:top left}
+@keyframes pop{from{opacity:0;transform:scale(.92)}}
+.popover button{display:flex;align-items:center;gap:8px;width:100%;height:32px;border:0;background:transparent;padding:0 10px;border-radius:4px;cursor:pointer;text-align:left}
+.popover button:hover{background:var(--surface-3)}
+.popover button i{width:8px;height:8px;border-radius:50%}
+.popover button .ck{margin-left:auto;color:var(--accent)}
+/* progress bar */
+.pbar{position:relative;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;min-width:70px}
+.pbar i{position:absolute;inset:0 auto 0 0;border-radius:3px;background:var(--accent);transition:width .8s var(--snappy)}
+.pcell{display:flex;align-items:center;gap:8px}
+.pcell span{font-size:12px;font-variant-numeric:tabular-nums;width:32px;text-align:right}
+/* avatars */
+.av{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;font-size:11px;font-weight:600;color:#fff;flex:none;border:2px solid var(--surface)}
+.av.lg{width:44px;height:44px;font-size:15px}
+.avg{display:flex;align-items:center}
+.avg .av{margin-left:-8px;transition:transform .2s var(--snappy),margin .2s var(--snappy)}
+.avg .av:first-child{margin-left:0}
+.avg:hover .av{margin-left:-2px}
+.avg .av:hover{transform:translateY(-3px) scale(1.08);z-index:2}
+.avg .more{background:var(--surface-3);color:var(--text-secondary)}
+/* hover card */
+.hcard{position:fixed;z-index:70;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-16);padding:12px;width:240px;pointer-events:none;animation:pop .18s var(--snappy)}
+.hcard .top{display:flex;gap:10px;align-items:center;margin-bottom:8px}
+.hcard b{display:block}
+/* tooltip */
+#tip{position:fixed;z-index:80;pointer-events:none;background:var(--foreground);color:var(--surface);font-size:12px;line-height:16px;padding:6px 8px;border-radius:4px;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;max-width:260px;white-space:pre-line}
+#tip.on{opacity:1;transform:none}
+/* person cards */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.pcard{cursor:pointer;transition:transform .2s var(--snappy),box-shadow .2s}
+.pcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-16)}
+.pcard .top{display:flex;gap:12px;align-items:center}
+.pcard .nm{font-weight:600;line-height:18px}
+.pcard .rl{font-size:12px;color:var(--text-secondary)}
+.ring{width:64px;height:64px;margin-left:auto;flex:none;position:relative}
+.ring svg{width:64px;height:64px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:6}
+.ring .bg{stroke:var(--surface-3)}
+.ring .fg{stroke-linecap:round;transition:stroke-dashoffset 1s var(--snappy),stroke .3s}
+.ring span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:11px;background:var(--surface-3);font-size:11px}
+.chip i{width:6px;height:6px;border-radius:50%}
+.spark{width:100%;height:36px;display:block;margin-top:10px}
+.spark path.l{fill:none;stroke-width:1.6}
+/* tree */
+.tree .lvl0 td{font-weight:600;background:var(--surface-2)}
+.tree .tg{display:inline-grid;place-items:center;width:20px;height:20px;border:0;background:transparent;border-radius:3px;cursor:pointer;color:var(--text-secondary);transition:transform .2s var(--snappy)}
+.tree .tg.open{transform:rotate(90deg)}
+.tree .tg:hover{background:var(--surface-3)}
+.tree .ind1{padding-left:30px}.tree .ind2{padding-left:58px}
+.meter{display:flex;align-items:center;gap:8px}
+.meter .pbar{flex:1;max-width:140px}
+function importWorkbook(buf){if(!window.XLSX)throw new Error('Library Excel belum termuat');const wb=XLSX.read(buf);const sh=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n]):null;
+    const P=sh('Proyek'),E=sh('Personel'),A=sh('Penugasan');if(!P||!E||!A)throw new Error('Butuh sheet Proyek, Personel, Penugasan');
+    const toISO=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v||'').slice(0,10);
+    const projects=P.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),fac:String(r['Fasilitas']||''),phase:PH.includes(r['Fase'])?r['Fase']:'FEED',cx:clamp(+r['Kompleksitas']||2,1,3),start:toISO(r['Mulai']),end:toISO(r['Selesai']),progress:clamp(+r['Progres (%)']||0,0,100)}));
+    const people=E.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),role:ROLES.includes(r['Disiplin'])?r['Disiplin']:'Civil/Structure',cap:clamp(+r['Kapasitas (%)']||100,10,100)}));
+    const assigns=A.map(r=>({id:String(r['ID']||uid('a')),p:String(r['Proyek']),e:String(r['Personel']),alloc:clamp(+r['Alokasi (%)']||0,0,100)})).filter(a=>projects.some(p=>p.id===a.p)&&people.some(x=>x.id===a.e));
+    const BW=sh('Bobot Fase');if(BW)BW.forEach(r=>{if(PH.includes(r['Fase']))S.settings.phaseW[r['Fase']]=+r['Bobot']});
+    const RF=sh('Faktor Peran');if(RF)RF.forEach(r=>{if(ROLES.includes(r['Disiplin']))PH.forEach(ph=>{if(r[ph]!=null)S.settings.roleF[r['Disiplin']][ph]=+r[ph]})});
+    Object.assign(S,{projects,people,assigns});markDirty();return `${projects.length} proyek, ${people.length} personel, ${assigns.length} penugasan`}
+/* forms */
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label{font-size:13px;font-weight:600}
+.field .hint{font-size:12px;color:var(--text-secondary)}
+.in{height:32px;padding:0 10px;border:1px solid var(--border-strong);border-bottom-color:var(--text-secondary);border-radius:var(--r-sm);background:var(--surface);width:100%;transition:border-color .15s}
+.in:focus{border-bottom:2px solid var(--accent)}
+.in.err{border-color:var(--danger);animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* range slider */
+.range{display:flex;align-items:center;gap:12px}
+.range input[type=range]{flex:1;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:linear-gradient(to right,var(--accent) var(--p,50%),var(--border-strong) var(--p,50%));cursor:pointer}
+.range input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--surface);border:5px solid var(--accent);box-shadow:var(--shadow-2);transition:transform .15s var(--snappy)}
+.range input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
+.range input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--surface);border:5px solid var(--accent)}
+.range output{min-width:46px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.rf{width:64px;height:28px;text-align:right;padding:0 6px}
+/* progress tracker */
+.track{display:flex;align-items:center;margin:8px 0 18px}
+.track .st{display:flex;flex-direction:column;align-items:center;gap:6px;flex:none;width:70px;font-size:12px;color:var(--text-secondary)}
+.track .st b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:2px solid var(--border-strong);background:var(--surface);font-size:12px;transition:all .4s var(--snappy)}
+.track .st.done b{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.track .st.cur b{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.track .st.cur{color:var(--foreground);font-weight:600}
+.track .ln{flex:1;height:2px;background:var(--border-strong);margin-bottom:24px;position:relative;overflow:hidden}
+.track .ln i{position:absolute;inset:0;background:var(--accent);transform-origin:left;transition:transform .6s var(--ease)}
+/* overlay / dialog */
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.dialog{background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-28);width:100%;max-width:520px;max-height:90vh;overflow:auto;padding:24px;animation:dlg .28s var(--snappy)}
+@keyframes dlg{from{opacity:0;transform:scale(.94) translateY(8px)}}
+.overlay.side{justify-content:flex-end;padding:0}
+.overlay.side .dialog{max-width:620px;height:100%;max-height:none;border-radius:0;animation:slide .35s var(--ease)}
+@keyframes slide{from{transform:translateX(40px);opacity:0}}
+.dialog h3{font-size:20px;line-height:28px;font-weight:600;margin:0 0 4px}
+.dialog .dh{display:flex;align-items:flex-start;gap:8px;margin-bottom:16px}
+.dialog .dh .x{margin-left:auto}
+.dialog .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+/* command bar */
+.cmd{max-width:560px;padding:0;align-self:flex-start;margin-top:12vh}
+.cmd input{width:100%;height:52px;border:0;border-bottom:1px solid var(--border);background:transparent;padding:0 16px;font-size:16px}
+.cmd .list{max-height:50vh;overflow:auto;padding:6px}
+.cmd .it{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:4px;cursor:pointer}
+.cmd .it.sel{background:var(--accent-soft)}
+.cmd .it small{margin-left:auto;color:var(--text-tertiary)}
+.cmd .grp{font-size:11px;color:var(--text-tertiary);padding:8px 10px 4px;font-weight:600}
+/* toasts */
+.toasts{position:fixed;right:16px;bottom:16px;z-index:90;display:flex;flex-direction:column-reverse;gap:8px;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:260px;max-width:360px;background:var(--surface);border-radius:var(--r);box-shadow:var(--shadow-16);padding:12px 14px;border-left:4px solid var(--accent);animation:tin .35s var(--snappy)}
+.toast.ok{border-left-color:var(--success)}.toast.warn{border-left-color:var(--warning)}.toast.err{border-left-color:var(--danger)}
+.toast.out{animation:tout .25s var(--ease) forwards}
+@keyframes tin{from{opacity:0;transform:translateY(12px) scale(.96)}}
+@keyframes tout{to{opacity:0;transform:translateX(30px)}}
+.warnbox{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);background:var(--danger-soft);color:var(--danger);font-size:13px;margin-top:8px;animation:rise .25s}
+.okbox{background:var(--success-soft);color:var(--success)}
+.compare{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;text-align:center;margin:12px 0}
+.compare .big{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums}
+.list-att{display:flex;flex-direction:column;gap:2px}
+.list-att .r{display:flex;align-items:center;gap:10px;padding:8px;border-radius:4px}
+.list-att .r:hover{background:var(--surface-2)}
+.list-att .r .meter{margin-left:auto}
+.empty{padding:28px;text-align:center;color:var(--text-secondary)}
+.formula{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--surface-3);padding:10px 12px;border-radius:var(--r-sm);line-height:18px;overflow:auto}
+@media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g-12,.g2,.g3{grid-template-columns:1fr}}
+@media (max-width:720px){
+  .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:48px minmax(0,1fr) 60px}
+  .topbar{gap:8px;padding:0 10px}.brand{font-size:14px}
+  .nav{grid-row:3;flex-direction:row;border-right:0;border-top:1px solid var(--border);padding:4px;gap:0;overflow:hidden}
+  .nav a{flex:1;flex-direction:column;justify-content:center;height:52px;gap:2px;padding:0;font-size:10px}
+  .nav a.on::before{left:30%;right:30%;top:0;bottom:auto;width:auto;height:3px}
+  .nav .foot{display:none}.nav .ln{display:none}.nav .sn{display:block}
+  main{padding:16px 14px 24px}
+  .brand small,.search-btn kbd,.save-btn .lbl{display:none}
+  .search-btn{max-width:none;min-width:0}.top-actions{flex:none}
+  .g4{grid-template-columns:1fr 1fr;gap:10px}
+  .kpi .val{font-size:26px;line-height:32px}
+  .sb-row{grid-template-columns:72px 1fr 44px;font-size:12px}
+  .row2{grid-template-columns:1fr}
+  .toasts{left:12px;right:12px;bottom:72px}
+  .toast{min-width:0;max-width:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* ══ Bencho components (MIT, bencho.dev/licence) ═══════════
+   Their design tokens are mapped onto this app's own Fluent tokens
+   on each component's root, so nothing new is defined globally:
+   ink → --foreground, slab/card → --surface, signal → --accent,
+   ok → --success, UI font → --font, pane edge → --border. */
+.ctx,.csw,.upl,.ptc{
+  --fill-on:var(--foreground);--ink:var(--foreground);
+  --fill-slab:var(--surface);--card:var(--surface);
+  --signal:var(--accent);--ok:var(--success);
+  --font-ui:var(--font);--pane-edge:var(--border);
+}
+/* the drop box is a filled box with no edge: on this app's white
+   cards that fill has to be the next surface down, or it vanishes */
+.upl{--fill-slab:var(--surface-3)}
+/* the logo sits on the brand bar, so its ink is the bar's white */
+.brand .ptc{--fill-on:#fff;--ink:#fff}
+
+/* ══ Context meter ════════════════════════════════════════
+   lab/ContextMeter.tsx. A slab card: a head, a rolling figure, a
+   field of dots filled column by column, chips for the kinds, and a
+   foot with the room left and Compact. Each kind is a strength of
+   the ink, strongest first; the empty room is a faint wash */
+.ctx {
+  --ctx-empty: color-mix(in srgb, var(--fill-on, #17181a) 8%, var(--fill-slab, #fff));
+  /* here the kinds are the four phases, in the app's own phase hues */
+  --k-ded: #0F6CBD;
+  --k-feed: #8764B8;
+  --k-pre: #00A5AF;
+  --k-ini: #D29200;
+  /* 20 dots of 11 on a 3px gap, plus the padding */
+  width: 309px;
+  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--fill-slab, var(--card, #fff));
+  color: var(--fill-on, var(--ink, #17181a));
+  font-family: var(--font-ui);
+  user-select: none;
+  -webkit-user-select: none;}
+.ctx-head { display: flex; justify-content: space-between; align-items: center; }
+.ctx-title { font-size: 16px; line-height: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.ctx-figure { display: flex; align-items: baseline; gap: 6px; margin: 12px 0 16px; }
+.ctx-num { position: relative; font-size: 30px; line-height: 32px; font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+/* the odometer: each digit a wheel, a window one line tall */
+.ctx-roll { display: flex; line-height: 1; }
+.ctx-wheel { position: relative; display: inline-block; height: 1.15em; overflow: hidden; }
+.ctx-digit { display: block; line-height: 1.15em; }
+.ctx-sym { line-height: 1.15em; }
+/* the figure in words, for anyone not watching it roll */
+.ctx-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ctx-of { font-size: 13px; color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #fff)); }
+/* the field: filled down each column, then across */
+.ctx-grid {
+  display: grid;
+  grid-auto-flow: column;
+  justify-content: center;}
+.ctx-dot {
+  display: block;
+  border-radius: 2px;
+  background: var(--ctx-empty);
+  transition: background-color 260ms ease, opacity 220ms ease, scale 260ms cubic-bezier(0.22, 1, 0.36, 1);}
+/* a dot changing kind never blends two colours: one solid colour grows
+   over the other, from nothing to the full dot. Filling, the new colour
+   grows in over the old; draining, the old colour shrinks away and leaves
+   the empty dot behind it */
+.ctx-dot[data-swap] { position: relative; }
+.ctx-dot[data-swap]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* short, so the whole swap is done by the sound's knock */
+  animation: 340ms cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation-delay: inherit;}
+.ctx .ctx-dot[data-swap="fill"] { background: var(--was); }
+.ctx-dot[data-swap="fill"]::after { background: var(--now); animation-name: ctx-grow; }
+.ctx-dot[data-swap="drain"]::after { background: var(--was); animation-name: ctx-shrink; animation-timing-function: cubic-bezier(0.55, 0, 0.75, 0.4); animation-duration: 240ms; }
+/* the field gives under the press, the bar's squeeze in both axes:
+   down to its floor at 38% of 760, on the sound's knock, a touch past
+   on the way back. a/b flips per press so the keyframes restart */
+.ctx-grid[data-wave="a"] { animation: ctx-press-a 760ms cubic-bezier(0.33, 0, 0.2, 1) both; }
+.ctx-grid[data-wave="b"] { animation: ctx-press-b 760ms cubic-bezier(0.33, 0, 0.2, 1) both; }
+.ctx-dot[data-kind="ded"],.ctx-swatch[data-kind="ded"] { background: var(--k-ded); }
+.ctx-dot[data-kind="feed"],.ctx-swatch[data-kind="feed"] { background: var(--k-feed); }
+.ctx-dot[data-kind="pre"],.ctx-swatch[data-kind="pre"] { background: var(--k-pre); }
+.ctx-dot[data-kind="ini"],.ctx-swatch[data-kind="ini"] { background: var(--k-ini); }
+/* pointing at a kind: it holds, the rest fall back */
+/* only the fade: growing the lit dots ate into the 3px gaps and the
+   grid stopped being an even grid */
+.ctx-dot[data-dim] { opacity: 0.22; }
+.ctx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.ctx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #fff));
+  color: var(--fill-on, #17181a);
+  font: inherit;
+  font-size: 13px;
+  cursor: default;
+  transition: background-color 160ms ease, scale 260ms cubic-bezier(0.34, 1.56, 0.64, 1);}
+/* the chip gives a little under the pointer; keyed to data-on rather than
+   :hover, so hovering a kind in the field presses its chip too */
+.ctx-chip[data-on] { background: color-mix(in srgb, var(--fill-on, #17181a) 12%, var(--fill-slab, #fff)); scale: 0.975; }
+.ctx-chip:focus-visible { outline: 2px solid var(--signal, #2231dd); outline-offset: 1px; }
+.ctx-swatch { display: block; width: 8px; height: 8px; border-radius: 2px; }
+.ctx-act {
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  /* on a light card a solid black pill shouts over the meter it acts
+     on: a firm grey wash with ink words instead. A dark card keeps
+     the solid pill, where white on near-black reads calm */
+  background: color-mix(in srgb, var(--fill-on, #17181a) 10%, var(--fill-slab, #fff));
+  color: var(--fill-on, #17181a);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: scale 240ms cubic-bezier(0.22, 1, 0.36, 1), background-color 220ms ease, color 220ms ease;}
+/* Undo is the way back, not the action: quieter than Compact in either
+   fill — a fainter wash, and on a light card muted words */
+.ctx-act[data-quiet] {
+  background: color-mix(in srgb, var(--fill-on, #17181a) 5%, var(--fill-slab, #fff));
+  color: color-mix(in srgb, var(--fill-on, #17181a) 64%, var(--fill-slab, #fff));}
+.ctx-act:active { scale: 0.96; }
+.ctx-act:focus-visible { outline: 2px solid var(--signal, #2231dd); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  .ctx-dot { transition-duration: 1ms; transition-delay: 0ms !important; }
+  .ctx-grid[data-wave] { animation: none; }
+}
+@keyframes ctx-grow { from { scale: 0; } to { scale: 1; } }
+@keyframes ctx-press-a { 0%, 100% { scale: 1; } 38% { scale: 0.965; } 72% { scale: 1.01; } }
+@keyframes ctx-press-b { 0%, 100% { scale: 1; } 38% { scale: 0.965; } 72% { scale: 1.01; } }
+@keyframes ctx-shrink { from { scale: 1; } to { scale: 0; } }
+
+/* ══ Card swap ════════════════════════════════════════════
+   lab/CardSwap.tsx. A stack in depth; each card's slot arrives as
+   --t. Cards are the slab, a title row and a photo with a concentric
+   corner. No shadows: depth is the stack and a hairline edge */
+.csw-fit { position: relative; overflow: visible; }
+.csw {
+  /* here: out of the flow, so a scaled-down stack takes no more
+     room than it shows */
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: left top;
+  user-select: none;
+  -webkit-user-select: none;}
+.csw-stage {
+  position: absolute;
+  left: 30px;
+  bottom: 24px;
+  /* flat, so paint order is the z-index: a card sent back goes behind
+     at once. The origin is the block's middle, where it was on .csw */
+  perspective: 1000px;
+  perspective-origin: 150px 95px;}
+/* a card is a photo in a thin slab frame, its corner concentric
+   with the photo's, and a solid label pill in the corner */
+.csw-card {
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  border-radius: 20px;
+  background: var(--fill-slab, #fff);
+  color: var(--fill-on, #17181a);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--fill-on, #17181a) 12%, transparent);
+  transform: var(--t);
+  transition: transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  backface-visibility: hidden;}
+.csw-card[data-front] { cursor: grab; touch-action: none; }
+.csw-card[data-front]:active { cursor: grabbing; }
+/* no photos here: the "photo" is the project, painted in its phase hue */
+.csw-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 16px 16px 56px;
+  box-sizing: border-box;
+  border-radius: 17px;
+  color: #fff;
+  pointer-events: none;}
+.csw-photo .k { font: 12px/16px ui-monospace, Consolas, monospace; opacity: .85; }
+.csw-photo .n { font-size: 17px; line-height: 22px; font-weight: 600; }
+.csw-photo .f { font-size: 12px; opacity: .85; }
+.csw-photo .big { margin-top: auto; font-size: 28px; line-height: 32px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.csw-photo .big small { font-size: 12px; font-weight: 400; opacity: .85; margin-left: 4px; }
+.csw-photo .bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,.3); overflow: hidden; }
+.csw-photo .bar i { display: block; height: 100%; background: #fff; border-radius: 2px; }
+.csw-tag {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--fill-slab, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;}
+.csw-info { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.csw-info .muted { font-size: 12px; }
+
+/* ══ Upload dropzone ═════════════════════════════════════ */
+.upl {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 300px;
+  max-width: 100%;
+  font-family: var(--font-ui);
+  color: var(--fill-on, var(--ink));
+  user-select: none;
+  -webkit-user-select: none;}
+/* a slot of fixed size, so the box can close in round an upload
+   without moving anything below it */
+.upl-zone-wrap {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 176px;}
+.upl-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  /* 176, up from 128: the drop target is the block, and a short
+     one read as a banner rather than a place to put something */
+  height: 176px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
+  border-radius: var(--upl-r);
+  background: var(--fill-slab, var(--card));
+  /* a file over it and it grows, with a bounce; an upload and it
+     closes in round it */
+  transition:
+    scale 420ms cubic-bezier(0.24, 1.34, 0.38, 1),
+    width 420ms cubic-bezier(0.24, 1.34, 0.38, 1),
+    height 420ms cubic-bezier(0.24, 1.34, 0.38, 1),
+    background-color 220ms ease;}
+.upl-zone[data-over] { scale: 1.02; }
+.upl-zone:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+/* the gulp: in a little as the file goes down, out past its size,
+   and settle */
+.upl-zone[data-gulp] { animation: upl-gulp 460ms cubic-bezier(0.3, 1.2, 0.4, 1); }
+.upl-zone[data-gulp] .upl-icon { animation: upl-open 460ms cubic-bezier(0.3, 1.4, 0.4, 1); }
+.upl-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  /* a light grey tile, no edge — the fill's own ink walked most
+     of the way to its slab, so it is a pale grey on the light fill
+     and a lifted grey on the dark one */
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #ffffff));
+  color: color-mix(in srgb, var(--fill-on, #17181a) 72%, var(--fill-slab, #ffffff));
+  transition: translate 420ms cubic-bezier(0.24, 1.34, 0.38, 1), background-color 220ms ease, color 220ms ease;}
+/* over the box the tile only lifts, and its arrow goes to full
+   ink — no colour of its own */
+.upl-zone[data-over] .upl-icon {
+  translate: 0 -4px;
+  color: var(--fill-on, var(--ink));}
+.upl-say {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 0em;}
+.upl-say b { font-weight: 600; }
+.upl-say span {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+.upl-zone[data-refuse] .upl-say b { color: var(--danger); }
+/* the file, arrived in the box */
+.upl-now {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  flex: none;
+  animation: upl-land 420ms var(--upl-spring) both;}
+.upl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 150px;}
+.upl-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  letter-spacing: 0em;}
+.upl-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--fill-on, #17181a) 52%, var(--fill-slab, #ffffff));
+  letter-spacing: 0em;}
+.upl-track {
+  position: relative;
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--fill-on, #17181a) 6%, var(--fill-slab, #ffffff));}
+.upl-bar {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--signal, #2231dd);
+  transform-origin: left center;}
+.upl-roll { display: inline-flex; line-height: 1em; height: 1em; overflow: hidden; }
+.upl-roll-col { display: inline-block; height: 1em; overflow: hidden; }
+.upl-roll-strip {
+  display: flex;
+  flex-direction: column;
+  transition: transform 220ms cubic-bezier(0.24, 1.34, 0.38, 1);}
+.upl-roll-strip > span { height: 1em; line-height: 1em; }
+.upl-end {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;}
+.upl-tick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--ok, #15803d);
+  color: #fff;
+  animation: upl-pop 380ms cubic-bezier(0.3, 1.6, 0.4, 1) both;}
+.upl-page { overflow: visible; }
+.upl-page-line {
+  stroke: color-mix(in srgb, var(--fill-on, #17181a) 32%, var(--fill-slab, #ffffff));
+  stroke-width: 1.5;
+  /* outline only: the page is drawn, not filled */
+  fill: none;}
+.upl-page-ext {
+  fill: #fff;
+  font-family: var(--font-ui);
+  /* size is the <text>'s own fontSize, in the icon's units */
+  font-weight: 600;
+  letter-spacing: 0em;}
+@keyframes upl-gulp {
+  0% { scale: 1.02; }
+  35% { scale: 0.985; }
+  70% { scale: 1.006; }
+  100% { scale: 1; }}
+@keyframes upl-open { 40% { scale: 1.08; } }
+@keyframes upl-land { from { opacity: 0; scale: 0.85; translate: 0 10px; } }
+@keyframes upl-pop { from { scale: 0; } }
+
+/* ══ Particles ═════════════════════════════════════════════
+   lab/Particles.tsx. The dots are drawn on a canvas in the
+   element's own `color`, so the ink is set here and the theme
+   carries it. */
+.ptc {
+  position: relative;
+  display: grid;
+  place-items: center;}
+.ptc-canvas {
+  display: block;
+  color: var(--fill-on, var(--ink));
+  cursor: crosshair;
+  touch-action: none;}
+
+</style>
+</head>
+<body>
+<div id="app" data-k></div>
+<script id="wl-state" type="application/json" data-k>null</script>
+<script data-k>
+/* ---------- persistence template (captured before any rendering) ---------- */
+const PRISTINE=(()=>{const c=document.documentElement.cloneNode(true);c.removeAttribute('data-theme');c.querySelectorAll('head > *, body > *').forEach(e=>{if(!e.hasAttribute('data-k'))e.remove()});return c})();
+function buildDoc(state){const c=PRISTINE.cloneNode(true);c.querySelector('#wl-state').textContent=JSON.stringify(state).replace(/</g,'\\u003c');return '<!DOCTYPE html>\n'+c.outerHTML}
+
+/* ---------- constants ---------- */
+const PH=['Inisiasi','Pre-FEED','FEED','DED'];
+const PH_COLOR={'Inisiasi':'#D29200','Pre-FEED':'#00A5AF','FEED':'#8764B8','DED':'#0F6CBD'};
+const ROLES=['Lead Project','Process','Mechanical','Piping','Civil/Structure','Electrical','Instrument','DocCon'];
+const ROLE_SHORT={'Lead Project':'Lead','Process':'Process','Mechanical':'Mech','Piping':'Piping','Civil/Structure':'Civil','Electrical':'Elect','Instrument':'Instr','DocCon':'DocCon'};
+const ROLE_COLOR={'Lead Project':'#0F6CBD','Process':'#8764B8','Mechanical':'#00A5AF','Piping':'#CA5010','Civil/Structure':'#107C10','Electrical':'#C239B3','Instrument':'#986F0B','DocCon':'#4F6BED'};
+const CX_LABEL={1:'Rendah',2:'Sedang',3:'Tinggi'};
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- seed data ---------- */
+function seed(){
+  const people=[
+    ['Andi Pratama','Lead Project'],['Rina Kusuma','Lead Project'],
+    ['Budi Santoso','Process'],['Maya Lestari','Process'],
+    ['Dedi Kurniawan','Mechanical'],['Sari Wulandari','Mechanical'],
+    ['Fajar Hidayat','Piping'],['Nina Rahmawati','Piping'],
+    ['Rizky Ananda','Civil/Structure'],['Dewi Anggraini','Civil/Structure'],
+    ['Hendra Wijaya','Electrical'],['Putri Ayu','Electrical'],
+    ['Agus Setiawan','Instrument'],['Lina Marlina','Instrument'],
+    ['Tika Ramadhani','DocCon'],['Yoga Saputra','DocCon']
+  ].map((p,i)=>({id:'e'+(i+1),name:p[0],role:p[1],cap:100}));
+  const projects=[
+    ['P-01','Petani GS Upgrading','GS Petani','DED',3,'2026-07-01','2027-03-31',45],
+    ['P-02','Intan GS Brownfield Upgrading','GS Intan','FEED',3,'2026-09-01','2027-02-28',30],
+    ['P-03','OPLL 6 Puncak','GS Puncak','DED',2,'2026-05-01','2026-12-31',70],
+    ['P-04','Puncak New Waterflood','GS Puncak','Pre-FEED',2,'2026-10-01','2027-01-31',20],
+    ['P-05','SPG Ogan Facility','SPG Ogan','FEED',2,'2026-08-01','2027-01-31',50],
+    ['P-06','OPL Lincak','Lincak','Inisiasi',1,'2026-11-01','2027-02-28',10],
+    ['P-07','Steamflood Header Replacement','Duri','DED',2,'2026-09-15','2027-04-30',25],
+    ['P-08','Water Injection Plant Expansion','Minas','Pre-FEED',3,'2026-11-01','2027-03-31',5],
+    ['P-09','Tank Farm Rehabilitation','Bekasap','Inisiasi',1,'2026-12-01','2027-03-31',0],
+    ['P-10','South Trunkline Replacement','Balam','FEED',2,'2026-06-01','2026-12-31',80]
+  ].map(p=>({id:p[0],name:p[1],fac:p[2],phase:p[3],cx:p[4],start:p[5],end:p[6],progress:p[7]}));
+  const ALLOC={DED:40,FEED:30,'Pre-FEED':20,Inisiasi:15};
+  const SKIP={Inisiasi:['Piping','Electrical','Instrument'],'Pre-FEED':['Piping']};
+  const assigns=[];let n=1;
+  projects.forEach((p,i)=>ROLES.forEach((r,ri)=>{
+    if(SKIP[p.phase]&&SKIP[p.phase].includes(r))return;
+    const pool=people.filter(e=>e.role===r);const e=pool[(i+ri)%pool.length];
+    assigns.push({id:'a'+(n++),p:p.id,e:e.id,alloc:ALLOC[p.phase]+((i*7+ri*3)%3)*5});
+  }));
+  [['P-07','e9',35],['P-02','e16',30],['P-08','e1',25],['P-01','e5',20]].forEach(x=>{const a=assigns.find(a=>a.p===x[0]&&a.e===x[1]);if(a)a.alloc+=x[2];else assigns.push({id:'a'+(n++),p:x[0],e:x[1],alloc:x[2]})});
+  return {v:1,updatedAt:0,settings:{
+    phaseW:{'Inisiasi':0.2,'Pre-FEED':0.4,'FEED':0.7,'DED':1},
+    roleF:{
+      'Lead Project':{'Inisiasi':1,'Pre-FEED':1,'FEED':1,'DED':0.9},
+      'Process':{'Inisiasi':0.8,'Pre-FEED':1,'FEED':1,'DED':0.7},
+      'Mechanical':{'Inisiasi':0.4,'Pre-FEED':0.6,'FEED':0.9,'DED':1},
+      'Piping':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1},
+      'Civil/Structure':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1},
+      'Electrical':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1},
+      'Instrument':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1},
+      'DocCon':{'Inisiasi':0.3,'Pre-FEED':0.5,'FEED':0.8,'DED':1.2}
+    },
+    cxF:{1:0.8,2:1,3:1.25},thr:{low:70,high:100}
+  },people,projects,assigns};
+}
+
+/* ---------- state ---------- */
+let S,DIRTY=false;
+(function init(){
+  let emb=null;try{emb=JSON.parse(document.getElementById('wl-state').textContent)}catch(e){}
+  S=emb||seed();
+  try{const d=JSON.parse(localStorage.getItem('wl-draft')||'null');if(d&&d.updatedAt>(S.updatedAt||0)){S=d;if(window.claude){DIRTY=true;setTimeout(()=>toast('Draf yang belum disimpan dipulihkan','warn'),600)}}}catch(e){}
+})();
+function markDirty(){DIRTY=true;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}updateSave()}
+const uid=p=>p+Math.random().toString(36).slice(2,8);
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const f0=n=>Math.round(n).toLocaleString('id-ID');
+const f1=n=>(Math.round(n*10)/10).toLocaleString('id-ID',{minimumFractionDigits:1,maximumFractionDigits:1});
+const f2=n=>(+n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const ease=t=>1-Math.pow(1-t,3);
+function tween(dur,fn){if(RM){fn(1);return}const t0=performance.now();(function f(now){const t=clamp((now-t0)/dur,0,1);fn(ease(t));if(t<1)requestAnimationFrame(f)})(t0)}
+function rollNum(el,to,fmt=f0){const from=+(el.dataset.v||0);el.dataset.v=to;tween(900,t=>el.textContent=fmt(from+(to-from)*t))}
+const proj=id=>S.projects.find(p=>p.id===id);
+const person=id=>S.people.find(e=>e.id===id);
+const initials=n=>n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const pDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const fDate=s=>pDate(s).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'2-digit'});
+
+/* ---------- calculation engine ---------- */
+function aLoad(a){const p=proj(a.p),e=person(a.e);if(!p||!e)return 0;const st=S.settings;
+  return (st.phaseW[p.phase]??0)*((st.roleF[e.role]||{})[p.phase]??1)*(st.cxF[p.cx]??1)*a.alloc*(1-p.progress/100)}
+const active=(p,d0,d1)=>pDate(p.start)<=d1&&pDate(p.end)>=d0;
+function util(eid,d0,d1){const e=person(eid);if(!e)return 0;let s=0;for(const a of S.assigns)if(a.e===eid){const p=proj(a.p);if(!p)continue;if(d0&&!active(p,d0,d1))continue;s+=aLoad(a)}return s*100/(e.cap||100)}
+function status(u){const t=S.settings.thr;return u>t.high?'over':u>=t.low?'opt':'avail'}
+const ST_LABEL={avail:'Tersedia',opt:'Optimal',over:'Overload'};
+const ST_COLOR=u=>({avail:'var(--accent)',opt:'var(--success)',over:'var(--danger)'})[status(u)];
+const badge=u=>`<span class="badge b-${status(u)}">${ST_LABEL[status(u)]}</span>`;
+function roleUtil(role,d0,d1){const ms=S.people.filter(e=>e.role===role);if(!ms.length)return 0;const cap=ms.reduce((s,e)=>s+(e.cap||100),0);return ms.reduce((s,e)=>s+util(e.id,d0,d1)*(e.cap||100)/100,0)*100/cap}
+function weeks(n=12){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:n},(_,i)=>{const s=new Date(d);s.setDate(d.getDate()+i*7);const e=new Date(s);e.setDate(s.getDate()+6);return {s,e,l:s.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}})}
+function months(n=12,back=3){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()-back);return Array.from({length:n},(_,i)=>{const s=new Date(d.getFullYear(),d.getMonth()+i,1);const e=new Date(d.getFullYear(),d.getMonth()+i+1,0);return {s,e,l:s.toLocaleDateString('id-ID',{month:'short',year:'2-digit'})}})}
+const projLoad=pid=>S.assigns.filter(a=>a.p===pid).reduce((s,a)=>s+aLoad(a),0);
+const team=pid=>S.assigns.filter(a=>a.p===pid).map(a=>person(a.e)).filter(Boolean);
+
+/* ---------- icons ---------- */
+const IC={
+ dash:'<path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-4H4zM14 4v4h6V4z"/>',
+ proj:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ ppl:'<circle cx="9" cy="8" r="3.2"/><path d="M3 19c.6-3 3-5 6-5s5.4 2 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4.3 1.6 5 4"/>',
+ asg:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+ ana:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+ set:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.6 1.6 0 0 0-1-1.5 1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.6 1.6 0 0 0 1.5-1 1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+ save:'<path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ dl:'<path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/>',ul:'<path d="M12 16V5m0 0-4 4m4-4 4 4M5 20h14"/>',
+ edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+ sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+ moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+ warn:'<path d="M12 3 2 21h20zM12 10v5M12 18v.5"/>',chev:'<path d="m9 6 6 6-6 6"/>',reset:'<path d="M4 4v6h6"/><path d="M5 15a8 8 0 1 0 2-8.5L4 10"/>'
+};
+const ic=(n,s=20)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+
+/* ---------- shell ---------- */
+const VIEWS=[['dashboard','Dashboard','dash','Beranda'],['proyek','Proyek','proj','Proyek'],['personel','Personel','ppl','Personel'],['penugasan','Penugasan','asg','Tugas'],['analisis','Analisis disiplin','ana','Analisis'],['pengaturan','Pengaturan','set','Atur']];
+function shell(){
+  $('#app').innerHTML=`<div class="shell">
+  <header class="topbar">
+    <div class="brand"><span class="ptc"><canvas class="ptc-canvas" id="logoCv"></canvas></span>Workload <small>by YMD</small></div>
+    <button class="search-btn" data-act="cmd">${ic('search',16)}<span>Cari proyek, personel…</span><kbd>Ctrl K</kbd></button>
+    <div class="top-actions">
+      <button class="save-btn" id="saveBtn" data-act="save"><span class="dot"></span>${ic('save',16)}<span class="lbl">Tersimpan</span></button>
+      <button class="ltoggle" data-act="theme" aria-label="Ganti tema"><span class="knob" id="knob"></span></button>
+    </div>
+  </header>
+  <nav class="nav" id="nav">${VIEWS.map(v=>`<a href="#${v[0]}" data-v="${v[0]}">${ic(v[2])}<span class="ln">${v[1]}</span><span class="sn">${v[3]}</span></a>`).join('')}
+    <div class="foot">Data contoh. Rumus beban:<br>Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)</div></nav>
+  <main id="main"></main></div><div id="tip"></div><div class="toasts" id="toasts"></div>`;
+  applyTheme();updateSave();
+}
+function updateSave(){const b=$('#saveBtn');if(!b)return;b.classList.toggle('dirty',DIRTY);b.querySelector('.lbl').textContent=DIRTY?'Simpan':'Tersimpan'}
+function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){return 'light'}}
+function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
+
+/* ---------- UI state ---------- */
+const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',wRole:'Semua',lcOff:{},open:{}};
+function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
+function render(){
+  const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  const m=$('#main');m.innerHTML=PAGES[v]();m.scrollTop=0;(MOUNT[v]||(()=>{}))();initSegs();
+}
+window.addEventListener('hashchange',render);
+
+/* ---------- components ---------- */
+function seg(id,opts,val){return `<div class="seg" data-seg="${id}">${opts.map(o=>`<button data-act="seg" data-id="${id}" data-val="${esc(o)}" class="${o===val?'on':''}">${esc(o)}</button>`).join('')}<span class="pill"></span></div>`}
+function initSegs(){$$('.seg').forEach(placePill)}
+function placePill(s){const on=$('button.on',s),p=$('.pill',s);if(!on||!p)return;p.style.left=on.offsetLeft+'px';p.style.width=on.offsetWidth+'px'}
+function avatar(e,cls=''){return `<span class="av ${cls}" style="background:${ROLE_COLOR[e.role]||'#616161'}" data-hc="${e.id}">${esc(initials(e.name))}</span>`}
+function avGroup(list,max=4){const u=[...new Map(list.map(e=>[e.id,e])).values()];return `<span class="avg">${u.slice(0,max).map(e=>avatar(e)).join('')}${u.length>max?`<span class="av more">+${u.length-max}</span>`:''}</span>`}
+function pbar(v,color='var(--accent)'){return `<div class="pbar"><i style="width:${clamp(v,0,100)}%;background:${color}"></i></div>`}
+function meter(u){return `<div class="meter"><div class="pbar"><i style="width:${clamp(u/1.5,0,100)}%;background:${ST_COLOR(u)}"></i></div><b style="font-variant-numeric:tabular-nums;min-width:42px;text-align:right">${f0(u)}%</b></div>`}
+function phasePill(p){return `<button class="phase" data-act="phasePick" data-id="${p.id}"><i style="background:${PH_COLOR[p.phase]}"></i>${p.phase}</button>`}
+function ring(u){const r=26,c=2*Math.PI*r,off=c*(1-clamp(u,0,150)/150);return `<div class="ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="${r}"/><circle class="fg" cx="32" cy="32" r="${r}" stroke="${ST_COLOR(u)}" stroke-dasharray="${c}" stroke-dashoffset="${c}" data-off="${off}"/></svg><span>${f0(u)}%</span></div>`}
+function animateRings(root=document){requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.ring .fg',root).forEach(c=>c.style.strokeDashoffset=c.dataset.off)))}
+function spark(vals,color){const w=240,h=36,mx=Math.max(110,...vals);const pts=vals.map((v,i)=>[i*(w/(vals.length-1)),h-2-(v/mx)*(h-4)]);const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');const y100=h-2-(100/mx)*(h-4);
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><line x1="0" x2="${w}" y1="${y100}" y2="${y100}" stroke="var(--danger)" stroke-dasharray="3 3" stroke-width="1" opacity=".5"/><path d="${d}L${w} ${h}L0 ${h}Z" fill="${color}" opacity=".12"/><path class="l" d="${d}" stroke="${color}"/></svg>`}
+
+/* sortable table */
+function table(id,cols,rows,opt={}){
+  const st=UI.sort[id]||opt.sort||{};let rs=[...rows];
+  if(st.key){const c=cols.find(c=>c.key===st.key);if(c){const g=c.val||(r=>r[c.key]);rs.sort((a,b)=>{const x=g(a),y=g(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'id'))*(st.dir==='desc'?-1:1)})}}
+  if(!rs.length)return `<div class="empty">${opt.empty||'Belum ada data'}</div>`;
+  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="enter ${opt.rowAct?'click':''}" style="animation-delay:${Math.min(i,15)*18}ms" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+/* charts */
+function arcD(cx,cy,r0,r1,a0,a1){if(a1-a0<=0.0001)return '';const L=a1-a0>Math.PI?1:0,p=(r,a)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];const[a,b]=[p(r1,a0),p(r1,a1)],[c,d]=[p(r0,a1),p(r0,a0)];return `M${a}A${r1} ${r1} 0 ${L} 1 ${b}L${c}A${r0} ${r0} 0 ${L} 0 ${d}Z`}
+function donut(el,items,label,fmt=f0){
+  const tot=items.reduce((s,i)=>s+i.value,0);const next=items.map(i=>tot?i.value/tot:0);const prev=el._v||items.map(()=>0);const pTot=el._t||0;
+  if(!el._built){el.innerHTML=`<div class="donut-wrap"><svg class="donut" viewBox="0 0 200 200">${items.map((it,k)=>`<path fill="${it.color}"></path>`).join('')}<text x="100" y="104" class="d-num" text-anchor="middle"></text><text x="100" y="124" text-anchor="middle" class="d-lab"></text></svg><div class="legend"></div></div>`;el._built=1}
+  const paths=$$('path',el);paths.forEach((p,k)=>{p.dataset.tip=`${items[k].label}: ${fmt(items[k].value)}`});
+  $('.d-lab',el).textContent=label;
+  $('.legend',el).innerHTML=items.map(it=>`<div class="li"><span class="sw" style="background:${it.color}"></span>${esc(it.label)}<b>${fmt(it.value)}</b></div>`).join('');
+  const num=$('.d-num',el);
+  tween(750,t=>{let a=-Math.PI/2;next.forEach((v,k)=>{const s=(prev[k]+(v-prev[k])*t)*Math.PI*2;paths[k].setAttribute('d',arcD(100,100,58,86,a+0.015,a+s-0.015));a+=s});num.textContent=fmt(pTot+(tot-pTot)*t)});
+  el._v=next;el._t=tot;
+}
+function barChart(el,items,max=150){
+  el.innerHTML=`<div class="bc"><div class="bc-plot">${[70,100].map(m=>`<div class="bc-mark ${m===100?'hi':''}" style="bottom:${m/max*100}%"><span>${m}%</span></div>`).join('')}${items.map(it=>`<div class="bc-col" data-tip="${esc(it.label)}\nUtilisasi ${f0(it.value)}% · ${ST_LABEL[status(it.value)]}"><div class="bc-bar" style="height:0;background:${ST_COLOR(it.value)}"><em>${f0(it.value)}%</em></div></div>`).join('')}</div><div class="bc-x">${items.map(it=>`<span>${esc(it.short)}</span>`).join('')}</div></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.bc-bar',el).forEach((b,i)=>b.style.height=clamp(items[i].value,0,max)/max*100+'%')));
+}
+function hmColor(u){if(u<=0)return 'var(--surface-3)';if(u>S.settings.thr.high)return `color-mix(in srgb, var(--danger) ${clamp(45+(u-100)*1.2,45,95)}%, var(--surface))`;return `color-mix(in srgb, var(--accent) ${clamp(12+u*.7,12,82)}%, var(--surface))`}
+function heatmap(el){
+  const W=weeks(12);const ppl=[...S.people].sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role));
+  el.innerHTML=`<div class="hm-wrap"><div class="hm" style="grid-template-columns:150px repeat(${W.length},1fr)"><div></div>${W.map(w=>`<div class="hh">${w.l}</div>`).join('')}${ppl.map(e=>`<div class="hn">${avatar(e)}<span>${esc(e.name)}</span></div>${W.map(w=>{const u=util(e.id,w.s,w.e);return `<div class="hc" style="background:${hmColor(u)}" data-tip="${esc(e.name)} · ${w.l}\nUtilisasi ${f0(u)}%">${f0(u)}</div>`}).join('')}`).join('')}</div></div>
+  <div class="hm-scale mt"><span>0%</span>${[0,30,60,90].map(u=>`<i style="background:${hmColor(u||1)}"></i>`).join('')}<span>100%</span><i style="background:${hmColor(120)}"></i><span>Overload</span></div>`;
+}
+function stacked(el){
+  const max=Math.max(150,...ROLES.map(r=>roleUtil(r)+5));
+  el.innerHTML=`<div class="sb">${ROLES.map(r=>{const ms=S.people.filter(e=>e.role===r);const cap=ms.reduce((s,e)=>s+(e.cap||100),0)||100;const by=PH.map(ph=>S.assigns.filter(a=>{const e=person(a.e),p=proj(a.p);return e&&p&&e.role===r&&p.phase===ph}).reduce((s,a)=>s+aLoad(a),0)*100/cap);const tot=by.reduce((s,v)=>s+v,0);
+    return `<div class="sb-row"><span>${esc(ROLE_SHORT[r])}</span><div class="sb-track"><span class="sb-100" style="left:${100/max*100}%"></span>${PH.map((ph,i)=>`<div class="sb-seg" data-w="${by[i]/max*100}" style="background:${PH_COLOR[ph]}" data-tip="${esc(r)} · ${ph}\n${f1(by[i])}% dari kapasitas"></div>`).join('')}</div><b style="color:${ST_COLOR(tot)}">${f0(tot)}%</b></div>`}).join('')}</div>
+    <div class="legend mt" style="flex-direction:row;flex-wrap:wrap;gap:14px">${PH.map(ph=>`<div class="li"><span class="sw" style="background:${PH_COLOR[ph]}"></span>${ph} (bobot ${f2(S.settings.phaseW[ph])})</div>`).join('')}</div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.sb-seg',el).forEach(s=>s.style.width=s.dataset.w+'%')));
+}
+function waffle(el){
+  const f=UI.wRole;const by=PH.map(ph=>S.assigns.filter(a=>{const e=person(a.e),p=proj(a.p);return e&&p&&p.phase===ph&&(f==='Semua'||ROLE_SHORT[e.role]===f)}).reduce((s,a)=>s+aLoad(a),0));
+  const tot=by.reduce((s,v)=>s+v,0)||1;const raw=by.map(v=>v/tot*100);const cells=raw.map(Math.floor);let rem=100-cells.reduce((s,v)=>s+v,0);raw.map((v,i)=>[v-Math.floor(v),i]).sort((a,b)=>b[0]-a[0]).forEach(([_,i])=>{if(rem>0){cells[i]++;rem--}});
+  const cols=[];PH.forEach((ph,i)=>{for(let k=0;k<cells[i];k++)cols.push(PH_COLOR[ph])});
+  let w=$('.waffle',el);if(!w){el.innerHTML=`<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap"><div class="waffle">${'<i></i>'.repeat(100)}</div><div class="legend"></div></div>`;w=$('.waffle',el)}
+  $$('i',w).forEach((c,k)=>{c.style.transitionDelay=(RM?0:k*5)+'ms';c.style.backgroundColor=cols[k]||'var(--surface-3)';c.dataset.tip=`${PH[cols[k]?Object.values(PH_COLOR).indexOf(cols[k]):0]} · 1 sel = 1% beban`});
+  $('.legend',el).innerHTML=PH.map((ph,i)=>`<div class="li"><span class="sw" style="background:${PH_COLOR[ph]}"></span>${ph}<b>${cells[i]}%</b></div>`).join('');
+}
+function lineChart(el){
+  const M=months(12,3);const series=ROLES.map(r=>({r,c:ROLE_COLOR[r],v:M.map(m=>roleUtil(r,m.s,m.e))}));
+  const W=Math.max(320,Math.round(el.clientWidth||640)),H=260,pl=34,pr=10,pt=10,pb=24;const vis=series.filter(s=>!UI.lcOff[s.r]);const mx=Math.max(120,...vis.flatMap(s=>s.v))*1.05;
+  const X=i=>pl+i*(W-pl-pr)/(M.length-1),Y=v=>pt+(H-pt-pb)*(1-v/mx);
+  const ticks=[0,50,100,Math.round(mx/50)*50].filter((v,i,a)=>a.indexOf(v)===i&&v<=mx);
+  const nowI=3;
+  el.innerHTML=`<div class="lc"><svg viewBox="0 0 ${W} ${H}">${ticks.map(t=>`<line class="grid-l" x1="${pl}" x2="${W-pr}" y1="${Y(t)}" y2="${Y(t)}" ${t===100?'stroke="var(--danger)" stroke-dasharray="4 3"':''}/><text class="ax" x="${pl-6}" y="${Y(t)+3}" text-anchor="end">${t}%</text>`).join('')}
+  <rect x="${X(nowI)-((W-pl-pr)/(M.length-1))/2}" y="${pt}" width="${(W-pl-pr)/(M.length-1)}" height="${H-pt-pb}" fill="var(--accent)" opacity=".06"/>
+  ${M.map((m,i)=>`<text class="ax" x="${X(i)}" y="${H-6}" text-anchor="middle" ${i===nowI?'style="font-weight:600;fill:var(--accent)"':''}>${m.l}</text>`).join('')}
+  ${series.map(s=>`<path class="s" d="${s.v.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join('')}" stroke="${s.c}" style="opacity:${UI.lcOff[s.r]?0:1}" pathLength="1"/>`).join('')}
+  <line class="xh" x1="0" x2="0" y1="${pt}" y2="${H-pb}"/><g class="dots"></g><rect class="hit" x="${pl}" y="0" width="${W-pl-pr}" height="${H}" fill="transparent"/></svg></div>
+  <div class="lc-leg">${series.map(s=>`<button data-act="lcToggle" data-r="${esc(s.r)}" class="${UI.lcOff[s.r]?'off':''}"><i style="background:${s.c}"></i>${esc(ROLE_SHORT[s.r])}</button>`).join('')}</div>`;
+  if(!RM&&!el._drawn){$$('path.s',el).forEach(p=>{p.style.strokeDasharray='1';p.style.strokeDashoffset='1';p.getBoundingClientRect();p.style.transition='stroke-dashoffset 1.2s cubic-bezier(.33,0,.1,1),opacity .25s';p.style.strokeDashoffset='0'});el._drawn=1}
+  const svg=$('svg',el),xh=$('.xh',el),dots=$('.dots',el),tip=$('#tip');
+  const move=ev=>{const r=svg.getBoundingClientRect();const x=(ev.clientX-r.left)/r.width*W;const i=clamp(Math.round((x-pl)/((W-pl-pr)/(M.length-1))),0,M.length-1);xh.setAttribute('x1',X(i));xh.setAttribute('x2',X(i));xh.style.opacity=1;
+    dots.innerHTML=vis.map(s=>`<circle cx="${X(i)}" cy="${Y(s.v[i])}" r="4" fill="${s.c}" stroke="var(--surface)" stroke-width="2"/>`).join('');
+    tip.textContent=M[i].l+'\n'+[...vis].sort((a,b)=>b.v[i]-a.v[i]).map(s=>`${ROLE_SHORT[s.r]}: ${f0(s.v[i])}%`).join('\n');showTip(ev.clientX,ev.clientY)};
+  svg.addEventListener('pointermove',move);svg.addEventListener('pointerdown',move);svg.addEventListener('pointerleave',()=>{xh.style.opacity=0;dots.innerHTML='';hideTip()});
+}
+
+/* tooltip & hover card */
+function showTip(x,y){const t=$('#tip');t.classList.add('on');const w=t.offsetWidth,h=t.offsetHeight;t.style.left=clamp(x+12,4,innerWidth-w-4)+'px';t.style.top=clamp(y-h-12,4,innerHeight-h-4)+'px'}
+function hideTip(){$('#tip')?.classList.remove('on')}
+document.addEventListener('pointerover',e=>{const t=e.target.closest('[data-tip]');if(t){$('#tip').textContent=t.dataset.tip;showTip(e.clientX,e.clientY);t.addEventListener('pointerleave',hideTip,{once:true})}
+  const h=e.target.closest('[data-hc]');if(h&&e.pointerType==='mouse'){showHC(h)}});
+document.addEventListener('pointermove',e=>{if($('#tip')?.classList.contains('on')&&e.target.closest('[data-tip]'))showTip(e.clientX,e.clientY)});
+let hcEl=null;
+function showHC(t){const e=person(t.dataset.hc);if(!e)return;hcEl?.remove();const u=util(e.id);const ps=S.assigns.filter(a=>a.e===e.id).map(a=>proj(a.p)).filter(Boolean);
+  hcEl=document.createElement('div');hcEl.className='hcard';hcEl.innerHTML=`<div class="top">${avatar(e,'lg')}<div><b>${esc(e.name)}</b><span class="muted" style="font-size:12px">${esc(e.role)}</span></div></div>${meter(u)}<div class="chips">${ps.map(p=>`<span class="chip"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)}</span>`).join('')}</div>`;
+  document.body.appendChild(hcEl);const r=t.getBoundingClientRect();hcEl.style.left=clamp(r.left,8,innerWidth-250)+'px';hcEl.style.top=(r.bottom+8+170>innerHeight?r.top-hcEl.offsetHeight-8:r.bottom+8)+'px';
+  t.addEventListener('pointerleave',()=>{hcEl?.remove();hcEl=null},{once:true})}
+
+/* toast */
+function toast(msg,type='ok'){const c=$('#toasts');if(!c)return;const t=document.createElement('div');t.className='toast '+type;t.setAttribute('role','status');t.innerHTML=`<span>${esc(msg)}</span>`;c.appendChild(t);while(c.children.length>4)c.firstChild.remove();setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),260)},3400)}
+
+/* dialog */
+function openDialog(html,{side=false,cls=''}={}){closeDialog();const o=document.createElement('div');o.className='overlay'+(side?' side':'');o.id='ovl';o.innerHTML=`<div class="dialog ${cls}" role="dialog" aria-modal="true">${html}</div>`;o.addEventListener('pointerdown',e=>{if(e.target===o)closeDialog()});document.body.appendChild(o);setTimeout(()=>$('input:not([type=hidden]),select',o)?.focus(),60);return o}
+function closeDialog(){$('#ovl')?.remove();$('.popover')?.remove()}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDialog();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd()}});
+
+/* ---------- pages ---------- */
+const PAGES={},MOUNT={};
+PAGES.dashboard=()=>{
+  const ppl=S.people,u=ppl.map(e=>util(e.id));const avg=u.reduce((s,v)=>s+v,0)/(u.length||1);const over=ppl.filter((e,i)=>u[i]>S.settings.thr.high);const avail=ppl.filter((e,i)=>u[i]<S.settings.thr.low);
+  const W=weeks(12);const wAvg=W.map(w=>ppl.reduce((s,e)=>s+util(e.id,w.s,w.e),0)/(ppl.length||1));
+  const attn=ppl.map(e=>({e,u:util(e.id)})).sort((a,b)=>b.u-a.u).slice(0,6);
+  return `<div class="page-head"><div><h1>Dashboard beban kerja</h1><p>Ringkasan utilisasi tim engineering per disiplin dan fase pekerjaan</p></div><div class="actions"><button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button></div></div>
+  <div class="grid g4">
+    <div class="card kpi"><div class="lab">${ic('proj',16)}Proyek aktif</div><div class="row"><div class="val" data-roll="${S.projects.length}">0</div></div><div class="sub">${PH.map(ph=>`${S.projects.filter(p=>p.phase===ph).length} ${ph}`).join(' · ')}</div></div>
+    <div class="card kpi"><div class="lab">${ic('ppl',16)}Personel</div><div class="row"><div class="val" data-roll="${ppl.length}">0</div>${avGroup(ppl,5)}</div><div class="sub">${ROLES.length} disiplin termasuk DocCon</div></div>
+    <div class="card kpi"><div class="lab">${ic('ana',16)}Utilisasi rata-rata</div><div class="row"><div class="val"><span data-roll="${avg}">0</span><small>%</small></div>${badge(avg)}</div>${spark(wAvg,'var(--accent)')}</div>
+    <div class="card kpi"><div class="lab">${ic('warn',16)}Overload &gt; ${S.settings.thr.high}%</div><div class="row"><div class="val" style="color:${over.length?'var(--danger)':'inherit'}" data-roll="${over.length}">0</div>${over.length?avGroup(over,4):'<span class="badge b-opt">Aman</span>'}</div><div class="sub">${avail.length} personel masih tersedia (&lt; ${S.settings.thr.low}%)</div></div>
+  </div>
+  <div class="grid g2 mt">
+    <div class="card"><div class="card-head"><div><h2>Proyek per fase</h2><div class="sub">DED berbobot paling besar</div></div><div class="right">${seg('donut',['Jumlah','Beban'],UI.donutMode==='count'?'Jumlah':'Beban')}</div></div><div id="donut"></div></div>
+    <div class="card"><div class="card-head"><div><h2>Utilisasi per disiplin</h2><div class="sub">Garis putus: batas optimal 70% dan overload 100%</div></div></div><div id="bars"></div></div>
+  </div>
+  <div class="grid g3 mt">
+    <div class="card" style="padding:0;display:grid;justify-items:center"><div id="ctx"></div></div>
+    <div class="card"><div class="card-head"><div><h2>Proyek beban tertinggi</h2><div class="sub">Tekan atau lempar kartu depan</div></div></div><div id="csw"></div><div class="csw-info" id="cswInfo"></div></div>
+    <div class="card"><div class="card-head"><div><h2>Perlu perhatian</h2><div class="sub">Utilisasi tertinggi saat ini</div></div></div><div class="list-att">${attn.map(a=>`<div class="r click" data-act="openPerson" data-id="${a.e.id}" style="cursor:pointer">${avatar(a.e)}<div><div style="font-weight:600">${esc(a.e.name)}</div><div class="muted" style="font-size:12px">${esc(a.e.role)}</div></div>${meter(a.u)}</div>`).join('')}</div></div>
+  </div>
+  <div class="card mt"><div class="card-head"><div><h2>Heatmap 12 minggu ke depan</h2><div class="sub">Personel × minggu, berdasarkan periode proyek aktif</div></div></div><div id="hm"></div></div>`;
+};
+MOUNT.dashboard=()=>{
+  $$('[data-roll]').forEach(el=>{const v=+el.dataset.roll;el.dataset.v=0;tween(900,t=>el.textContent=f0(v*t))});
+  mountCtx();mountCsw();drawDonut();barChart($('#bars'),ROLES.map(r=>({label:r,short:ROLE_SHORT[r],value:roleUtil(r)})));heatmap($('#hm'));
+};
+function drawDonut(){const el=$('#donut');if(!el)return;const byLoad=UI.donutMode==='load';donut(el,PH.slice().reverse().map(ph=>({label:ph,color:PH_COLOR[ph],value:byLoad?S.projects.filter(p=>p.phase===ph).reduce((s,p)=>s+projLoad(p.id),0)/100:S.projects.filter(p=>p.phase===ph).length})),byLoad?'beban (FTE)':'proyek',byLoad?f1:f0)}
+
+PAGES.proyek=()=>`<div class="page-head"><div><h1>Proyek</h1><p>Klik fase untuk mengubahnya, klik baris untuk detail tim</p></div><div class="actions"><button class="btn primary" data-act="newProject">${ic('plus',16)}Proyek baru</button></div></div>
+  <div class="card">${table('proj',[
+    {key:'id',label:'Kode',render:p=>`<span class="code">${esc(p.id)}</span>`},
+    {key:'name',label:'Nama proyek',render:p=>`<div style="font-weight:600">${esc(p.name)}</div><div class="muted" style="font-size:12px">${esc(p.fac)}</div>`},
+    {key:'phase',label:'Fase',val:p=>PH.indexOf(p.phase),render:phasePill},
+    {key:'cx',label:'Kompleksitas',render:p=>`${'●'.repeat(p.cx)}<span class="muted">${'●'.repeat(3-p.cx)}</span> ${CX_LABEL[p.cx]}`},
+    {key:'start',label:'Periode',render:p=>`<span style="white-space:nowrap">${fDate(p.start)} – ${fDate(p.end)}</span>`},
+    {key:'progress',label:'Progres',num:1,render:p=>`<div class="pcell">${pbar(p.progress,PH_COLOR[p.phase])}<span>${p.progress}%</span></div>`},
+    {key:'team',label:'Tim',nosort:1,render:p=>avGroup(team(p.id),5)},
+    {key:'load',label:'Beban (FTE)',num:1,val:p=>projLoad(p.id),render:p=>`<b>${f2(projLoad(p.id)/100)}</b>`}
+  ],S.projects,{rowAct:'openProject',sort:{key:'id',dir:'asc'}})}</div>`;
+
+PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'||ROLE_SHORT[e.role]===f).map(e=>({e,u:util(e.id)}));const W=weeks(12);
+  return `<div class="page-head"><div><h1>Personel</h1><p>Utilisasi tiap engineer, lead project, dan DocCon</p></div><div class="actions"><button class="btn primary" data-act="newPerson">${ic('plus',16)}Personel baru</button></div></div>
+  <div style="margin-bottom:16px">${seg('pf',['Semua',...ROLES.map(r=>ROLE_SHORT[r])],f)}</div>
+  <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · kapasitas ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
+MOUNT.personel=()=>animateRings();
+
+PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
+  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div></div>
+  <div class="grid g-12">
+    <div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>
+    <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div><div class="right"><select class="in" style="width:auto" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
+    ${table('asg',[
+      {key:'p',label:'Proyek',render:r=>`<span class="code">${esc(r.p)}</span> ${esc(r.pp.name)}`},
+      {key:'phase',label:'Fase',val:r=>PH.indexOf(r.pp.phase),render:r=>`<span class="chip"><i style="background:${PH_COLOR[r.pp.phase]}"></i>${r.pp.phase}</span>`},
+      {key:'e',label:'Personel',val:r=>r.ee.name,render:r=>`<span style="display:inline-flex;align-items:center;gap:8px">${avatar(r.ee)}${esc(r.ee.name)}</span>`},
+      {key:'role',label:'Disiplin',val:r=>r.ee.role,render:r=>esc(ROLE_SHORT[r.ee.role])},
+      {key:'alloc',label:'Alokasi',num:1,render:r=>`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
+      {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
+      {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
+    ],rows,{sort:{key:'p',dir:'asc'}})}</div></div>`};
+function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
+  <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
+  <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
+  <div id="aprev"></div><div class="foot" style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" type="submit">${ic('plus',16)}Tambahkan</button></div></form>`}
+function updAssignPreview(){const f=$('#aform');if(!f)return;const fd=new FormData(f);const p=proj(fd.get('p')),e=person(fd.get('e'));const al=+fd.get('alloc');const r=$('input[type=range]',f);r.style.setProperty('--p',(al-5)/95*100+'%');$('output',f).textContent=al+'%';if(!p||!e)return;
+  const before=util(e.id);const add=aLoad({p:p.id,e:e.id,alloc:al})*100/(e.cap||100);const after=before+add;const dup=S.assigns.some(a=>a.p===p.id&&a.e===e.id);
+  $('#aprev').innerHTML=`<div class="compare"><div><div class="muted" style="font-size:12px">Sekarang</div><div class="big" style="color:${ST_COLOR(before)}">${f0(before)}%</div>${badge(before)}</div><div class="muted">${ic('chev')}</div><div><div class="muted" style="font-size:12px">Setelah (+${f1(add)}%)</div><div class="big" style="color:${ST_COLOR(after)}">${f0(after)}%</div>${badge(after)}</div></div>
+  <div class="formula">${f2(S.settings.phaseW[p.phase])} (${p.phase}) × ${f2((S.settings.roleF[e.role]||{})[p.phase]??1)} (${esc(ROLE_SHORT[e.role])}) × ${f2(S.settings.cxF[p.cx])} (${CX_LABEL[p.cx]}) × ${al}% × (1 − ${p.progress}%) = ${f1(aLoad({p:p.id,e:e.id,alloc:al}))}%</div>
+  ${dup?`<div class="warnbox">${ic('warn',16)}<span>${esc(e.name)} sudah ada di ${esc(p.id)}. Alokasi akan ditambahkan ke penugasan yang ada.</span></div>`:''}
+  ${after>S.settings.thr.high?`<div class="warnbox">${ic('warn',16)}<span>Utilisasi ${esc(e.name)} akan melewati ${S.settings.thr.high}%. Pertimbangkan personel lain dari disiplin ${esc(ROLE_SHORT[e.role])}${(()=>{const alt=S.people.filter(x=>x.role===e.role&&x.id!==e.id).sort((a,b)=>util(a.id)-util(b.id))[0];return alt?`, misalnya ${esc(alt.name)} (${f0(util(alt.id))}%)`:''})()}.</span></div>`:''}`;
+}
+MOUNT.penugasan=()=>updAssignPreview();
+
+PAGES.analisis=()=>`<div class="page-head"><div><h1>Analisis disiplin</h1><p>Distribusi beban per fase dan tren bulanan</p></div></div>
+  <div class="grid g2"><div class="card"><div class="card-head"><div><h2>Beban per disiplin per fase</h2><div class="sub">Persentase terhadap kapasitas disiplin</div></div></div><div id="sb"></div></div>
+  <div class="card"><div class="card-head"><div><h2>Komposisi beban per fase</h2><div class="sub">1 sel = 1% dari total beban</div></div></div><div style="margin-bottom:12px">${seg('wf',['Semua',...ROLES.map(r=>ROLE_SHORT[r])],UI.wRole)}</div><div id="wf"></div></div></div>
+  <div class="card mt"><div class="card-head"><div><h2>Tren utilisasi bulanan</h2><div class="sub">Rata-rata per disiplin; kolom biru muda = bulan ini. Klik legenda untuk menyembunyikan seri.</div></div></div><div id="lc"></div></div>
+  <div class="card mt"><div class="card-head"><div><h2>Struktur beban: disiplin → personel → proyek</h2></div><div class="right"><button class="btn sm" data-act="treeAll">Buka/tutup semua</button></div></div><div id="tree">${treeTable()}</div></div>`;
+MOUNT.analisis=()=>{stacked($('#sb'));waffle($('#wf'));lineChart($('#lc'))};
+function treeTable(){let h=`<div class="tw"><table class="t tree"><thead><tr><th>Nama</th><th>Fase / peran</th><th class="num">Alokasi</th><th>Utilisasi / beban</th></tr></thead><tbody>`;
+  ROLES.forEach(r=>{const ms=S.people.filter(e=>e.role===r);const ru=roleUtil(r);const o=UI.open[r];
+    h+=`<tr class="lvl0"><td><button class="tg ${o?'open':''}" data-act="tree" data-k="${esc(r)}">${ic('chev',14)}</button> ${esc(r)} <span class="muted" style="font-weight:400">(${ms.length})</span></td><td></td><td></td><td>${meter(ru)}</td></tr>`;
+    if(o)ms.forEach(e=>{const u=util(e.id),ok=UI.open[e.id];const as=S.assigns.filter(a=>a.e===e.id);
+      h+=`<tr class="enter"><td class="ind1"><button class="tg ${ok?'open':''}" data-act="tree" data-k="${e.id}">${ic('chev',14)}</button> <span style="display:inline-flex;align-items:center;gap:8px;vertical-align:middle">${avatar(e)}${esc(e.name)}</span></td><td>${badge(u)}</td><td class="num">${as.reduce((s,a)=>s+a.alloc,0)}%</td><td>${meter(u)}</td></tr>`;
+      if(ok)as.forEach(a=>{const p=proj(a.p);if(!p)return;h+=`<tr class="enter"><td class="ind2"><span class="code">${esc(p.id)}</span> ${esc(p.name)}</td><td><span class="chip"><i style="background:${PH_COLOR[p.phase]}"></i>${p.phase}</span></td><td class="num">${a.alloc}%</td><td>${f1(aLoad(a))}%</td></tr>`})})});
+  return h+'</tbody></table></div>'}
+
+PAGES.pengaturan=()=>{const st=S.settings;return `<div class="page-head"><div><h1>Pengaturan</h1><p>Bobot perhitungan dan pengelolaan data</p></div></div>
+  <div class="grid g2">
+   <div class="card"><h2>Bobot fase</h2><div class="sub" style="margin-bottom:16px">DED > FEED > Pre-FEED > Inisiasi</div>
+    ${[...PH].reverse().map(ph=>`<div class="field"><label style="display:flex;align-items:center;gap:8px"><span class="sw" style="width:10px;height:10px;border-radius:2px;background:${PH_COLOR[ph]}"></span>${ph}</label><div class="range"><input type="range" min="0" max="1.5" step="0.05" value="${st.phaseW[ph]}" data-in="phaseW" data-k="${ph}" style="--p:${st.phaseW[ph]/1.5*100}%"><output>${f2(st.phaseW[ph])}</output></div></div>`).join('')}
+    <h2 class="mt">Faktor kompleksitas</h2><div class="row2 mt" style="grid-template-columns:repeat(3,1fr)">${[1,2,3].map(c=>`<div class="field"><label>${CX_LABEL[c]}</label><input class="in" type="number" step="0.05" min="0" value="${st.cxF[c]}" data-in="cxF" data-k="${c}"></div>`).join('')}</div>
+    <h2>Ambang status</h2><div class="row2 mt"><div class="field"><label>Optimal mulai (%)</label><input class="in" type="number" value="${st.thr.low}" data-in="thr" data-k="low"></div><div class="field"><label>Overload di atas (%)</label><input class="in" type="number" value="${st.thr.high}" data-in="thr" data-k="high"></div></div>
+   </div>
+   <div class="card"><h2>Faktor peran per fase</h2><div class="sub" style="margin-bottom:12px">Pengali beban tiap disiplin pada setiap fase</div>
+    <div class="tw"><table class="t"><thead><tr><th>Disiplin</th>${PH.map(ph=>`<th class="num">${ph}</th>`).join('')}</tr></thead><tbody>${ROLES.map(r=>`<tr><td>${esc(r)}</td>${PH.map(ph=>`<td class="num"><input class="in rf" type="number" step="0.05" min="0" value="${(st.roleF[r]||{})[ph]??1}" data-in="roleF" data-r="${esc(r)}" data-k="${ph}"></td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <h2 class="mt">Rumus</h2><div class="formula mt">Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres)<br>Utilisasi = Σ Beban ÷ Kapasitas personel</div>
+   </div>
+  </div>
+  <div class="card mt"><h2>Data</h2><div class="sub" style="margin-bottom:14px">Ekspor ke Excel, impor dari Excel dengan format yang sama, atau kembalikan data contoh</div>
+   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format yang sama dengan file ekspor: sheet Proyek, Personel, dan Penugasan.</div></div></div></div>`};
+MOUNT.pengaturan=()=>UploadDropzone($('#upl'),{onFile:async buf=>{const r=importWorkbook(buf);render();toast(`Impor selesai: ${r}`);return 'Terimpor'}});
+
+/* ---------- project & person dialogs ---------- */
+function openProject(id){const p=proj(id);if(!p)return;const as=S.assigns.filter(a=>a.p===id);const pi=PH.indexOf(p.phase);
+  openDialog(`<div class="dh"><div><span class="code">${esc(p.id)} · ${esc(p.fac)}</span><h3>${esc(p.name)}</h3><div class="muted">${fDate(p.start)} – ${fDate(p.end)} · Kompleksitas ${CX_LABEL[p.cx]}</div></div><button class="btn subtle icon-btn x" data-act="close" aria-label="Tutup">${ic('x')}</button></div>
+  <div class="track">${PH.map((ph,i)=>`${i?`<div class="ln"><i style="transform:scaleX(${i<=pi?1:0})"></i></div>`:''}<div class="st ${i<pi?'done':i===pi?'cur':''}"><b>${i<pi?'✓':i+1}</b>${ph}</div>`).join('')}</div>
+  <div class="row2"><div class="field"><label>Progres fase</label><div class="range"><input type="range" min="0" max="100" step="5" value="${p.progress}" data-in="pprog" data-id="${p.id}" style="--p:${p.progress}%"><output>${p.progress}%</output></div></div><div class="field"><label>Total beban</label><div style="font-size:20px;font-weight:600" id="pload">${f2(projLoad(p.id)/100)} FTE</div></div></div>
+  <div class="card-head" style="margin:8px 0"><h2>Tim proyek</h2><div class="right">${avGroup(team(p.id),8)}</div></div>
+  <div class="list-att">${as.map(a=>{const e=person(a.e);return e?`<div class="r">${avatar(e)}<div><div style="font-weight:600">${esc(e.name)}</div><div class="muted" style="font-size:12px">${esc(e.role)} · alokasi ${a.alloc}% · beban ${f1(aLoad(a))}%</div></div><div class="meter">${meter(util(e.id))}</div></div>`:''}).join('')||'<div class="empty">Belum ada anggota tim</div>'}</div>
+  <div class="foot"><button class="btn danger" data-act="delProject" data-id="${p.id}">${ic('trash',16)}Hapus</button><button class="btn" data-act="editProject" data-id="${p.id}">${ic('edit',16)}Ubah</button><button class="btn primary" data-act="assignTo" data-id="${p.id}">${ic('plus',16)}Tambah anggota</button></div>`,{side:true})}
+function projectForm(p){const n=p||{id:'P-'+String(S.projects.length+1).padStart(2,'0'),name:'',fac:'',phase:'FEED',cx:2,start:new Date().toISOString().slice(0,10),end:new Date(Date.now()+180*864e5).toISOString().slice(0,10),progress:0};
+  openDialog(`<div class="dh"><h3>${p?'Ubah proyek':'Proyek baru'}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div><form data-form="project" data-orig="${p?esc(p.id):''}">
+  <div class="row2"><div class="field"><label>Kode</label><input class="in" name="id" value="${esc(n.id)}" required></div><div class="field"><label>Fasilitas</label><input class="in" name="fac" value="${esc(n.fac)}"></div></div>
+  <div class="field"><label>Nama proyek</label><input class="in" name="name" value="${esc(n.name)}" required></div>
+  <div class="row2"><div class="field"><label>Fase</label><select class="in" name="phase">${PH.map(ph=>`<option ${ph===n.phase?'selected':''}>${ph}</option>`).join('')}</select></div><div class="field"><label>Kompleksitas</label><select class="in" name="cx">${[1,2,3].map(c=>`<option value="${c}" ${c==n.cx?'selected':''}>${CX_LABEL[c]}</option>`).join('')}</select></div></div>
+  <div class="row2"><div class="field"><label>Mulai</label><input class="in" type="date" name="start" value="${n.start}" required></div><div class="field"><label>Selesai</label><input class="in" type="date" name="end" value="${n.end}" required></div></div>
+  <div class="field"><label>Progres (%)</label><input class="in" type="number" name="progress" min="0" max="100" value="${n.progress}"></div>
+  <div class="foot"><button type="button" class="btn" data-act="close">Batal</button><button class="btn primary" type="submit">Simpan</button></div></form>`)}
+function openPerson(id){const e=person(id);if(!e)return;const u=util(e.id);const as=S.assigns.filter(a=>a.e===id);
+  openDialog(`<div class="dh"><div style="display:flex;gap:12px;align-items:center">${avatar(e,'lg')}<div><h3>${esc(e.name)}</h3><div class="muted">${esc(e.role)} · kapasitas ${e.cap}%</div></div></div><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>
+  <div style="display:flex;align-items:center;gap:16px">${ring(u)}<div>${badge(u)}<div class="muted" style="font-size:12px;margin-top:4px">Total alokasi ${as.reduce((s,a)=>s+a.alloc,0)}% · beban tertimbang ${f1(u)}%</div></div></div>
+  ${spark(weeks(12).map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="muted" style="font-size:11px">Proyeksi 12 minggu</div>
+  <h2 class="mt" style="font-size:16px">Penugasan</h2><div class="list-att mt">${as.map(a=>{const p=proj(a.p);return p?`<div class="r"><span class="chip"><i style="background:${PH_COLOR[p.phase]}"></i>${p.phase}</span><div><div style="font-weight:600">${esc(p.name)}</div><div class="muted" style="font-size:12px">${esc(p.id)} · alokasi ${a.alloc}% · progres ${p.progress}%</div></div><b style="margin-left:auto">${f1(aLoad(a))}%</b></div>`:''}).join('')||'<div class="empty">Belum ada penugasan</div>'}</div>
+  <div class="foot"><button class="btn danger" data-act="delPerson" data-id="${e.id}">${ic('trash',16)}Hapus</button><button class="btn" data-act="editPerson" data-id="${e.id}">${ic('edit',16)}Ubah</button></div>`,{side:true});animateRings($('#ovl'))}
+function personForm(e){const n=e||{name:'',role:'Civil/Structure',cap:100};
+  openDialog(`<div class="dh"><h3>${e?'Ubah personel':'Personel baru'}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div><form data-form="person" data-orig="${e?e.id:''}">
+  <div class="field"><label>Nama</label><input class="in" name="name" value="${esc(n.name)}" required></div>
+  <div class="row2"><div class="field"><label>Disiplin</label><select class="in" name="role">${ROLES.map(r=>`<option ${r===n.role?'selected':''}>${esc(r)}</option>`).join('')}</select></div><div class="field"><label>Kapasitas (%)</label><input class="in" type="number" name="cap" min="10" max="100" step="5" value="${n.cap}"></div><div class="hint">Mis. 50% untuk personel paruh waktu</div></div>
+  <div class="foot"><button type="button" class="btn" data-act="close">Batal</button><button class="btn primary" type="submit">Simpan</button></div></form>`)}
+function confirmDlg(msg,onOk){openDialog(`<div class="dh"><h3>Konfirmasi</h3></div><p>${msg}</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb" style="background:var(--danger);border-color:var(--danger)">Hapus</button></div>`);$('#okb').onclick=()=>{closeDialog();onOk()}}
+
+/* ---------- command bar ---------- */
+function openCmd(){const o=openDialog(`<input id="cq" placeholder="Ketik nama proyek, personel, atau halaman" autocomplete="off"><div class="list" id="cl"></div>`,{cls:'cmd'});let sel=0,items=[];
+  const run=it=>{closeDialog();it.go()};
+  const draw=()=>{const q=$('#cq').value.toLowerCase().trim();
+    items=[...VIEWS.map(v=>({g:'Halaman',t:v[1],s:'',go:()=>location.hash=v[0]})),...S.projects.map(p=>({g:'Proyek',t:p.id+' · '+p.name,s:p.phase,go:()=>{location.hash='proyek';setTimeout(()=>openProject(p.id),50)}})),...S.people.map(e=>({g:'Personel',t:e.name,s:e.role,go:()=>{location.hash='personel';setTimeout(()=>openPerson(e.id),50)}})),{g:'Aksi',t:'Penugasan baru',s:'',go:()=>ACT.newAssign()},{g:'Aksi',t:'Proyek baru',s:'',go:()=>projectForm()},{g:'Aksi',t:'Ganti tema terang/gelap',s:'',go:()=>ACT.theme()}].filter(it=>!q||(it.t+' '+it.s).toLowerCase().includes(q));
+    sel=clamp(sel,0,Math.max(0,items.length-1));let g='';
+    $('#cl').innerHTML=items.map((it,i)=>(it.g!==g?`<div class="grp">${(g=it.g)}</div>`:'')+`<div class="it ${i===sel?'sel':''}" data-i="${i}">${esc(it.t)}<small>${esc(it.s)}</small></div>`).join('')||'<div class="empty">Tidak ditemukan</div>';
+    $('#cl .sel')?.scrollIntoView({block:'nearest'})};
+  $('#cq').addEventListener('input',()=>{sel=0;draw()});
+  $('#cq').addEventListener('keydown',e=>{if(e.key==='ArrowDown'){sel++;draw();e.preventDefault()}else if(e.key==='ArrowUp'){sel--;draw();e.preventDefault()}else if(e.key==='Enter'&&items[sel])run(items[sel])});
+  $('#cl').addEventListener('click',e=>{const it=e.target.closest('.it');if(it)run(items[+it.dataset.i])});draw()}
+
+/* ---------- status picker ---------- */
+function phasePick(btn){$('.popover')?.remove();const p=proj(btn.dataset.id);const r=btn.getBoundingClientRect();const pop=document.createElement('div');pop.className='popover';
+  pop.innerHTML=PH.map(ph=>`<button data-ph="${ph}"><i style="background:${PH_COLOR[ph]}"></i>${ph}<span class="muted" style="font-size:11px;margin-left:6px">×${f2(S.settings.phaseW[ph])}</span>${ph===p.phase?`<span class="ck">✓</span>`:''}</button>`).join('');
+  document.body.appendChild(pop);pop.style.left=clamp(r.left,8,innerWidth-200)+'px';pop.style.top=(r.bottom+4)+'px';
+  pop.addEventListener('click',e=>{const b=e.target.closest('[data-ph]');if(!b)return;e.stopPropagation();if(b.dataset.ph!==p.phase){p.phase=b.dataset.ph;markDirty();toast(`${p.id} dipindah ke fase ${p.phase}`)}pop.remove();render()});
+  setTimeout(()=>document.addEventListener('click',function h(e){if(!pop.contains(e.target)){pop.remove();document.removeEventListener('click',h)}}),0)}
+
+/* ---------- actions ---------- */
+let ART=null,DL=null;
+const ACT={
+  cmd:openCmd,close:closeDialog,
+  theme(){const t=getTheme()==='dark'?'light':'dark';try{localStorage.setItem('wl-theme',t)}catch(e){}applyTheme();if(route()==='analisis'||route()==='dashboard')render()},
+  seg(b){const id=b.dataset.id,v=b.dataset.val;$$(`[data-seg="${id}"] button`).forEach(x=>x.classList.toggle('on',x===b));placePill(b.parentElement);
+    if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}},
+  sort(th){const id=th.dataset.t,k=th.dataset.k;const cur=UI.sort[id]||{};UI.sort[id]={key:k,dir:cur.key===k&&cur.dir==='asc'?'desc':'asc'};render()},
+  lcToggle(b){UI.lcOff[b.dataset.r]=!UI.lcOff[b.dataset.r];const el=$('#lc');lineChart(el)},
+  tree(b){UI.open[b.dataset.k]=!UI.open[b.dataset.k];$('#tree').innerHTML=treeTable()},
+  treeAll(){const any=ROLES.some(r=>UI.open[r]);ROLES.forEach(r=>UI.open[r]=!any);S.people.forEach(e=>UI.open[e.id]=!any);$('#tree').innerHTML=treeTable()},
+  phasePick(b,e){e.stopPropagation();phasePick(b)},
+  openProject(r,e){if(e.target.closest('[data-act="phasePick"],[data-hc]'))return;openProject(r.dataset.id)},
+  openPerson(r){openPerson(r.dataset.id)},
+  openProjectBtn(b){openProject(b.dataset.id)},
+  newProject(){projectForm()},editProject(b){projectForm(proj(b.dataset.id))},
+  newPerson(){personForm()},editPerson(b){personForm(person(b.dataset.id))},
+  newAssign(){openDialog(`<div class="dh"><h3>Penugasan baru</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm()}`);updAssignPreview()},
+  assignTo(b){const id=b.dataset.id;openDialog(`<div class="dh"><h3>Tambah anggota ${esc(id)}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm(id)}`);updAssignPreview()},
+  delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn');render()},
+  delProject(b){const id=b.dataset.id;confirmDlg(`Hapus proyek <b>${esc(id)}</b> beserta seluruh penugasannya?`,()=>{S.projects=S.projects.filter(p=>p.id!==id);S.assigns=S.assigns.filter(a=>a.p!==id);markDirty();toast(`Proyek ${id} dihapus`,'warn');render()})},
+  delPerson(b){const id=b.dataset.id;const e=person(id);confirmDlg(`Hapus <b>${esc(e.name)}</b> beserta seluruh penugasannya?`,()=>{S.people=S.people.filter(x=>x.id!==id);S.assigns=S.assigns.filter(a=>a.e!==id);markDirty();toast(`${e.name} dihapus`,'warn');render()})},
+  async save(){if(!DIRTY){toast('Tidak ada perubahan untuk disimpan','ok');return}
+    if(!ART){if(!window.claude){DIRTY=false;updateSave();toast('Tersimpan di browser ini');return}toast('Penyimpanan permanen tidak tersedia di tampilan ini. Perubahan disimpan sebagai draf di browser.','warn');return}
+    const b=$('#saveBtn');b.querySelector('.lbl').textContent='Menyimpan…';
+    try{await ART.publish(buildDoc(S));try{localStorage.removeItem('wl-draft')}catch(e){}DIRTY=false;updateSave();toast('Perubahan tersimpan')}
+    catch(err){const c=err&&err.code;if(c==='conflict'){toast('Data diperbarui oleh orang lain, halaman dimuat ulang','warn')}else if(c==='not_granted'||c==='not_writer'){toast('Anda hanya punya akses baca. Perubahan tetap sebagai draf.','warn')}else toast('Gagal menyimpan: '+(err&&err.message||c||'tidak diketahui'),'err');updateSave()}},
+  async export(){if(!window.XLSX){toast('Library Excel belum termuat','err');return}
+    const wb=XLSX.utils.book_new();const add=(n,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),n);
+    add('Utilisasi',S.people.map(e=>{const u=util(e.id);return {'Personel':e.name,'Disiplin':e.role,'Kapasitas (%)':e.cap,'Total alokasi (%)':S.assigns.filter(a=>a.e===e.id).reduce((s,a)=>s+a.alloc,0),'Utilisasi (%)':+u.toFixed(1),'Status':ST_LABEL[status(u)]}}));
+    add('Disiplin',ROLES.map(r=>({'Disiplin':r,'Utilisasi (%)':+roleUtil(r).toFixed(1),...Object.fromEntries(PH.map(ph=>[ph+' (%)',+(S.assigns.filter(a=>person(a.e)?.role===r&&proj(a.p)?.phase===ph).reduce((s,a)=>s+aLoad(a),0)*100/(S.people.filter(e=>e.role===r).reduce((s,e)=>s+(e.cap||100),0)||100)).toFixed(1)]))})));
+    add('Proyek',S.projects.map(p=>({'ID':p.id,'Nama':p.name,'Fasilitas':p.fac,'Fase':p.phase,'Kompleksitas':p.cx,'Mulai':p.start,'Selesai':p.end,'Progres (%)':p.progress,'Beban (FTE)':+(projLoad(p.id)/100).toFixed(2)})));
+    add('Personel',S.people.map(e=>({'ID':e.id,'Nama':e.name,'Disiplin':e.role,'Kapasitas (%)':e.cap})));
+    add('Penugasan',S.assigns.map(a=>({'ID':a.id,'Proyek':a.p,'Personel':a.e,'Nama personel':person(a.e)?.name||'','Alokasi (%)':a.alloc,'Beban (%)':+aLoad(a).toFixed(1)})));
+    add('Bobot Fase',PH.map(ph=>({'Fase':ph,'Bobot':S.settings.phaseW[ph]})));
+    add('Faktor Peran',ROLES.map(r=>({'Disiplin':r,...Object.fromEntries(PH.map(ph=>[ph,(S.settings.roleF[r]||{})[ph]??1]))})));
+    add('Kompleksitas',[1,2,3].map(c=>({'Level':c,'Label':CX_LABEL[c],'Faktor':S.settings.cxF[c]})));
+    const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});const name=`workload-analysis-${new Date().toISOString().slice(0,10)}.xlsx`;
+    if(!DL){if(window.claude){toast('Unduhan tidak tersedia di tampilan ini. Gunakan Salin ringkasan.','warn');return}const u=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('File Excel diunduh');return}
+    try{await DL.save({filename:name,data:new Blob([buf])});toast('File Excel siap diunduh')}catch(err){if(err&&err.code!=='declined')toast('Ekspor gagal: '+(err.message||err.code),'err')}},
+  async copyCsv(){const rows=[['Personel','Disiplin','Utilisasi (%)','Status'],...S.people.map(e=>{const u=util(e.id);return [e.name,e.role,u.toFixed(1),ST_LABEL[status(u)]]})];const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    try{await navigator.clipboard.writeText(csv);toast('Ringkasan CSV disalin ke clipboard')}catch(e){toast('Clipboard tidak diizinkan di tampilan ini','err')}},
+  reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan dikembalikan ke data contoh.</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Reset</button></div>`);$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
+};
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
+
+/* inputs */
+let rt=null;
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k)return;const st=S.settings;
+  if(k==='aprev')updAssignPreview();
+  else if(k==='phaseW'){st.phaseW[t.dataset.k]=+t.value;t.style.setProperty('--p',t.value/1.5*100+'%');t.nextElementSibling.textContent=f2(t.value);markDirty()}
+  else if(k==='roleF'){if(t.value!==''){(st.roleF[t.dataset.r]=st.roleF[t.dataset.r]||{})[t.dataset.k]=+t.value;markDirty()}}
+  else if(k==='cxF'){if(t.value!==''){st.cxF[t.dataset.k]=+t.value;markDirty()}}
+  else if(k==='thr'){if(t.value!==''){st.thr[t.dataset.k]=+t.value;markDirty()}}
+  else if(k==='pprog'){const p=proj(t.dataset.id);p.progress=+t.value;t.style.setProperty('--p',t.value+'%');t.nextElementSibling.textContent=t.value+'%';$('#pload').textContent=f2(projLoad(p.id)/100)+' FTE';markDirty();clearTimeout(rt);rt=setTimeout(()=>{const ov=$('#ovl');const sc=ov&&$('.dialog',ov).scrollTop;const m=$('#main').innerHTML=PAGES[route()]();(MOUNT[route()]||(()=>{}))();initSegs();if(ov)$('.dialog',ov).scrollTop=sc},400)}
+  else if(k==='alloc'){const a=S.assigns.find(x=>x.id===t.dataset.id);const v=clamp(+t.value||0,0,100);if(a){a.alloc=v;markDirty();const td=t.closest('tr').querySelector('td:nth-child(6) b');if(td)td.textContent=f1(aLoad(a))+'%'}}
+});
+document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;
+  if(k==='aFilter'){UI.aFilter=t.value;render()}
+  if(k==='alloc'){render()}
+});
+function importWorkbook(buf){if(!window.XLSX)throw new Error('Library Excel belum termuat');const wb=XLSX.read(buf);const sh=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n]):null;
+    const P=sh('Proyek'),E=sh('Personel'),A=sh('Penugasan');if(!P||!E||!A)throw new Error('Butuh sheet Proyek, Personel, Penugasan');
+    const toISO=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v||'').slice(0,10);
+    const projects=P.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),fac:String(r['Fasilitas']||''),phase:PH.includes(r['Fase'])?r['Fase']:'FEED',cx:clamp(+r['Kompleksitas']||2,1,3),start:toISO(r['Mulai']),end:toISO(r['Selesai']),progress:clamp(+r['Progres (%)']||0,0,100)}));
+    const people=E.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),role:ROLES.includes(r['Disiplin'])?r['Disiplin']:'Civil/Structure',cap:clamp(+r['Kapasitas (%)']||100,10,100)}));
+    const assigns=A.map(r=>({id:String(r['ID']||uid('a')),p:String(r['Proyek']),e:String(r['Personel']),alloc:clamp(+r['Alokasi (%)']||0,0,100)})).filter(a=>projects.some(p=>p.id===a.p)&&people.some(x=>x.id===a.e));
+    const BW=sh('Bobot Fase');if(BW)BW.forEach(r=>{if(PH.includes(r['Fase']))S.settings.phaseW[r['Fase']]=+r['Bobot']});
+    const RF=sh('Faktor Peran');if(RF)RF.forEach(r=>{if(ROLES.includes(r['Disiplin']))PH.forEach(ph=>{if(r[ph]!=null)S.settings.roleF[r['Disiplin']][ph]=+r[ph]})});
+    Object.assign(S,{projects,people,assigns});markDirty();return `${projects.length} proyek, ${people.length} personel, ${assigns.length} penugasan`}
+/* forms */
+document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();const d=Object.fromEntries(new FormData(f));
+  if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);if(ex)ex.alloc=clamp(ex.alloc+al,0,100);else S.assigns.push({id:uid('a'),p:d.p,e:d.e,alloc:al});markDirty();const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');if($('#ovl'))closeDialog();render()}
+  if(f.dataset.form==='project'){const orig=f.dataset.orig;const id=d.id.trim();if(!id||(id!==orig&&S.projects.some(p=>p.id===id))){f.querySelector('[name=id]').classList.add('err');toast('Kode proyek sudah dipakai','err');return}
+    if(d.end<d.start){f.querySelector('[name=end]').classList.add('err');toast('Tanggal selesai harus setelah mulai','err');return}
+    const n={id,name:d.name.trim(),fac:d.fac.trim(),phase:d.phase,cx:+d.cx,start:d.start,end:d.end,progress:clamp(+d.progress||0,0,100)};
+    if(orig){const i=S.projects.findIndex(p=>p.id===orig);S.projects[i]=n;if(orig!==id)S.assigns.forEach(a=>{if(a.p===orig)a.p=id})}else S.projects.push(n);
+    markDirty();closeDialog();toast(orig?'Proyek diperbarui':'Proyek ditambahkan');render()}
+  if(f.dataset.form==='person'){const orig=f.dataset.orig;const n={name:d.name.trim(),role:d.role,cap:clamp(+d.cap||100,10,100)};if(orig)Object.assign(person(orig),n);else S.people.push({id:uid('e'),...n});markDirty();closeDialog();toast(orig?'Personel diperbarui':'Personel ditambahkan');render()}
+});
+['dragover','drop'].forEach(t=>document.addEventListener(t,e=>{if(!e.target.closest('.upl-zone'))e.preventDefault()}));
+addEventListener('resize',()=>{initSegs();const l=$('#lc');if(l)lineChart(l)});
+
+/* ════════════════════════════════════════════════════════════
+   Bencho components (MIT, bencho.dev/licence), ported from React
+   to plain DOM so they live in this one-file app. The numbers and
+   the comments are Bencho's; notes marked "here:" say what changed.
+   ════════════════════════════════════════════════════════════ */
+
+/* ── inlined from lab/spring ──────────────────────── */
+/* Read once, the way the wheel and the pill nav do. A
+   preference, not a live input. */
+const stillness = () =>
+  typeof window !== "undefined" &&
+  !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+/* ══ Particles ════════════════════════════════════════════
+   A shape made of dots. Move over it and the dots are pushed
+   away from the pointer and spring home behind it; press and a
+   shockwave throws them out, and they gather again into the
+   NEXT shape — circle, square, flower, round again.
+
+   ── ONE SET OF DOTS, MANY SHAPES ────────────────────────
+   The dots never change, only where home is. Every shape is
+   sampled to the same number of points, and a change of shape
+   pairs each dot with a new home by angle round the middle, so
+   the swarm sweeps round into the new outline rather than
+   crossing itself.
+
+   ── STRETCHED BY SPEED ──────────────────────────────────
+   A dot at rest is round; a moving one is drawn a little long
+   along the way it is going, which is what makes a burst read
+   as a splash rather than a scatter of points.
+
+   here: it is the app's logo, so it is drawn on a 100-unit square
+   shown at 36px, with 130 dots, and the shapes are the app's own —
+   rising bars (the workload), a ring (utilisation) and a tile. The
+   dots start scattered and gather on load, so the mark assembles
+   itself once; after that it only moves when touched. */
+function Particles(canvas, { size = 36, reach = 30, force = 60, grain = "Fine" } = {}) {
+  const still = stillness();
+  const W = 100, H = 100, CX = W / 2, CY = H / 2;
+  /* how many dots every shape is sampled to */
+  const N = 130;
+  const SHAPES = ["Bars", "Ring", "Tile"];
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const rr = (p, x, y, w, h, r) => { p.moveTo(x + r, y); p.arcTo(x + w, y, x + w, y + h, r); p.arcTo(x + w, y + h, x, y + h, r); p.arcTo(x, y + h, x, y, r); p.arcTo(x, y, x + w, y, r); p.closePath(); };
+
+  function outline(s) {
+    const p = new Path2D();
+    if (s === "Bars") { rr(p, 12, 58, 22, 30, 5); rr(p, 39, 37, 22, 51, 5); rr(p, 66, 12, 22, 76, 5); }
+    /* the hole runs the other way round, so the fill is the ring */
+    else if (s === "Ring") { p.arc(CX, CY, 44, 0, Math.PI * 2); p.moveTo(CX + 22, CY); p.arc(CX, CY, 22, 0, Math.PI * 2, true); }
+    else rr(p, 14, 14, 72, 72, 16);
+    return p;
+  }
+
+  /* ── N points, spread evenly over the inside of a shape ──
+     A hex grid spaced so the shape holds about N of them — its
+     area over N, which is the spacing that fills it evenly — then
+     trimmed or topped up to exactly N. It was a fixed fine grid
+     thinned by a stride, and the stride beat against the grid:
+     the circle came out in zigzag bands. */
+  function homes(s) {
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const g = c.getContext("2d");
+    const path = outline(s);
+    let area = 0;
+    for (let y = 1; y < H; y += 2) for (let x = 1; x < W; x += 2) if (g.isPointInPath(path, x, y)) area += 4;
+    const sp = Math.sqrt((area / N) * (2 / Math.sqrt(3)));
+    const rowH = (sp * Math.sqrt(3)) / 2;
+    const pts = [];
+    for (let y = rowH / 2, row = 0; y < H; y += rowH, row++)
+      for (let x = sp / 2 + (row % 2) * (sp / 2); x < W; x += sp)
+        if (g.isPointInPath(path, x, y)) pts.push([x, y]);
+    /* within a few of N either way; drop evenly or repeat evenly */
+    const out = [];
+    for (let i = 0; i < N; i++) out.push(pts[Math.floor((i * pts.length) / N)]);
+    return out;
+  }
+  const angle = (x, y) => Math.atan2(y - CY, x - CX);
+
+  let dots = [], at = "Bars", hand = null, raf = 0;
+
+  /* ── give every dot a home in a shape ────────────────── */
+  const become = (s) => {
+    at = s;
+    const next = homes(s);
+    if (!dots.length) {
+      /* here: born scattered round the square, so the first frame
+         gathers them in */
+      dots = next.map(([x, y]) => still
+        ? { hx: x, hy: y, x, y, vx: 0, vy: 0 }
+        : { hx: x, hy: y, x: Math.random() * W, y: Math.random() * H, vx: 0, vy: 0 });
+      return;
+    }
+    /* pair by angle round the middle, so the swarm sweeps */
+    const a = dots.map((d, i) => [angle(d.x, d.y), i]).sort((p, q) => p[0] - q[0]);
+    const b = next.map((h, i) => [angle(h[0], h[1]), i]).sort((p, q) => p[0] - q[0]);
+    a.forEach(([, di], k) => {
+      const h = next[b[k][1]];
+      dots[di].hx = h[0]; dots[di].hy = h[1];
+      if (still) { dots[di].x = h[0]; dots[di].y = h[1]; }
+    });
+  };
+
+  const draw = () => {
+    const x = canvas.getContext("2d");
+    const k = canvas.width / W;
+    x.setTransform(k, 0, 0, k, 0, 0);
+    x.clearRect(0, 0, W, H);
+    x.fillStyle = getComputedStyle(canvas).color;
+    /* here: 1.9 and 2.7 were for a 480-unit field; the same feel
+       on a 100-unit mark is a little under half that */
+    const r = grain === "Coarse" ? 2.6 : 2.1;
+    x.beginPath();
+    for (const d of dots) {
+      const sp = Math.hypot(d.vx, d.vy);
+      if (sp < 0.3) {
+        x.moveTo(d.x + r, d.y);
+        x.arc(d.x, d.y, r, 0, Math.PI * 2);
+      } else {
+        /* long along its path, a little thin across it */
+        const s = Math.min(2.6, 1 + sp * 0.12);
+        const rot = Math.atan2(d.vy, d.vx);
+        x.moveTo(d.x + Math.cos(rot) * r * s, d.y + Math.sin(rot) * r * s);
+        x.ellipse(d.x, d.y, r * s, r / Math.sqrt(s), rot, 0, Math.PI * 2);
+      }
+    }
+    x.fill();
+  };
+
+  const run = () => {
+    if (raf) return;
+    let prev = 0;
+    const tick = (t) => {
+      const dt = prev ? clamp((t - prev) / 16.67, 0, 2.5) : 1;
+      prev = t;
+      const h = hand;
+      const R = clamp(reach, 30, 160);
+      const S = (clamp(force, 0, 100) / 100) * 11;
+      let busy = !!h;
+      for (const d of dots) {
+        if (h) {
+          const dx = d.x - h.x, dy = d.y - h.y, dd = Math.hypot(dx, dy);
+          if (dd < R && dd > 0.01) {
+            const f = Math.pow(1 - dd / R, 2) * S;
+            d.vx += (dx / dd) * f * dt;
+            d.vy += (dy / dd) * f * dt;
+          }
+        }
+        d.vx = (d.vx + (d.hx - d.x) * 0.05 * dt) * Math.pow(0.84, dt);
+        d.vy = (d.vy + (d.hy - d.y) * 0.05 * dt) * Math.pow(0.84, dt);
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
+        if (Math.abs(d.hx - d.x) < 0.05 && Math.abs(d.hy - d.y) < 0.05 && Math.abs(d.vx) < 0.02 && Math.abs(d.vy) < 0.02) {
+          d.x = d.hx; d.y = d.hy; d.vx = 0; d.vy = 0;
+        } else busy = true;
+      }
+      draw();
+      raf = busy ? requestAnimationFrame(tick) : 0;
+    };
+    raf = requestAnimationFrame(tick);
+  };
+
+  /* set up once */
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(size * dpr);
+  canvas.height = Math.round(size * dpr);
+  canvas.style.width = size + "px";
+  canvas.style.height = size + "px";
+  canvas.setAttribute("role", "img");
+  canvas.setAttribute("aria-label", "Logo Workload: titik-titik membentuk grafik. Tekan untuk mengganti bentuk.");
+  become("Bars"); draw(); run();
+  new MutationObserver(() => draw()).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  const where = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const k = r.width / W;
+    return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
+  };
+  canvas.addEventListener("pointermove", (e) => { if (still) return; hand = where(e); run(); });
+  canvas.addEventListener("pointerleave", () => { hand = null; run(); });
+  canvas.addEventListener("pointerdown", (e) => {
+    /* the shockwave, then the next shape */
+    const p = where(e);
+    if (!still) {
+      const S = 0.4 + (clamp(force, 0, 100) / 100) * 1.2;
+      /* here: the wave reaches the whole mark, and is scaled from
+         the 480 field down to the 100 one */
+      const RW = 200 * (W / 480) * 2, K = W / 480;
+      for (const d of dots) {
+        const dx = d.x - p.x, dy = d.y - p.y, dd = Math.hypot(dx, dy);
+        if (dd > RW || dd < 0.01) continue;
+        const f = (1 - dd / RW) * 30 * S * K;
+        d.vx += (dx / dd) * f;
+        d.vy += (dy / dd) * f;
+      }
+    }
+    become(SHAPES[(SHAPES.indexOf(at) + 1) % SHAPES.length]);
+    draw(); run();
+  });
+}
+
+/* ══ Context meter ════════════════════════════════════════
+   A model's context window as a field of dots, one per thousand
+   tokens. Each kind of content fills its own band, column by column,
+   in its own strength of ink, and the empty room is a faint grid.
+   Point at a chip, or at any dot, and that kind lights while the rest
+   fall back, and the big number rolls to its share. Compact folds the
+   conversation down: its dots go out in a ripple from the far end,
+   the bands after it close up, and the count rolls down with them.
+
+   here: the window is the team's capacity, one dot per 0.1 FTE, and
+   the kinds are the four phases. The two states are the raw
+   allocation and the weighted load — applying the phase weights is
+   the "compact": DED keeps most of its dots, Inisiasi gives most of
+   its up. The weighted view is the one the app shows first.
+
+   ── EVERY DOT IS AN INDEX ───────────────────────────────
+   Dot i belongs to whichever kind's running total it falls inside,
+   so a dot never moves: compacting changes which kind each index
+   belongs to, and the colour change is the animation. A delay that
+   grows along the indices that changed makes it a ripple rather
+   than a cut.
+
+   ── THE FIGURE POPS IN ──────────────────────────────────
+   The Price flow block's number pop-in, recycled: a digit that
+   changes rises a hair out of a 2px blur and lands a touch past
+   its mark, left to right 70ms apart — from below when the figure
+   grows, from above when it shrinks. Every digit is keyed by its
+   place and its value, so one that did not change never moves. */
+function Roll(el, text, up) {
+  const chars = text.split("");
+  const old = {};
+  el.querySelectorAll(":scope > [data-place]").forEach((w) => (old[w.dataset.place] = w));
+  const next = chars.map((c, i) => {
+    /* places counted from the right, so a new leading digit does not
+       shift the keys of the ones already there */
+    const place = chars.length - 1 - i;
+    if (!/[0-9]/.test(c)) {
+      const key = `s${place}`;
+      const w = old[key] || Object.assign(document.createElement("span"), { className: "ctx-sym" });
+      w.dataset.place = key; w.textContent = c;
+      return w;
+    }
+    const key = `p${place}`;
+    const w = old[key] || Object.assign(document.createElement("span"), { className: "ctx-wheel" });
+    w.dataset.place = key;
+    const cur = w.querySelector(".ctx-digit:not([data-out])");
+    if (!cur || cur.textContent !== c) {
+      if (cur) {
+        cur.dataset.out = 1;
+        Object.assign(cur.style, { position: "absolute", left: 0, top: 0 });
+        const a = cur.animate([{ opacity: 1, filter: "blur(0px)" }, { opacity: 0, filter: "blur(2px)" }], { duration: 160, fill: "forwards" });
+        a.onfinish = () => cur.remove();
+      }
+      const d = Object.assign(document.createElement("span"), { className: "ctx-digit", textContent: c });
+      w.appendChild(d);
+      /* initial={false}: a wheel that is new has nothing to roll from */
+      if (cur && !stillness())
+        d.animate(
+          [{ transform: `translateY(${up ? "0.18em" : "-0.18em"})`, opacity: 0, filter: "blur(2px)" },
+           { transform: "translateY(0em)", opacity: 1, filter: "blur(0px)" }],
+          { duration: 500, easing: "cubic-bezier(0.34, 1.45, 0.64, 1)", delay: i * 70, fill: "backwards" });
+    }
+    return w;
+  });
+  el.replaceChildren(...next);
+}
+
+function ContextMeter(root, { kinds, sizesRaw, sizesWeighted, window: WINDOW, title = "Kapasitas tim", unit = (d) => (d / 10).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }) {
+  /* 20 across, each an exact 11 by 11 on a 3px gap, so every one is
+     the same true square; here the rows follow the team's size */
+  const COLS = 20, DOT_W = 11, DOT_H = 11, GAP = 3;
+  const ROWS = Math.max(1, Math.ceil(WINDOW / COLS));
+  const SIZES = [sizesRaw, sizesWeighted];
+
+  /* biggest first, as it stands before compacting: the order of the
+     field and the chips alike. Fixed, so Compact shrinks in place
+     rather than reshuffling the bands */
+  const ORDER = kinds.map((_, i) => i).sort((a, b) => sizesRaw[b] - sizesRaw[a]);
+
+  /* which kind each dot is, before and after compacting: running
+     totals, a dot per unit. Both are fixed, so the dots that
+     differ between them — and so the ripple's delays — are too */
+  const ownersFor = (sizes) => {
+    const out = [];
+    ORDER.forEach((ci) => { for (let j = 0; j < Math.round(sizes[ci]) && out.length < WINDOW; j++) out.push(ci); });
+    while (out.length < WINDOW) out.push(null);
+    return out;
+  };
+  const OWNERS = [ownersFor(SIZES[0]), ownersFor(SIZES[1])];
+  const FIRST = OWNERS[0].findIndex((o, i) => o !== OWNERS[1][i]);
+  const LAST = OWNERS[0].reduce((l, o, i) => (o !== OWNERS[1][i] ? i : l), FIRST);
+  /* the whole ripple fits inside the compact sound's squeeze: every dot
+     that changes has started by RIPPLE ms, so the swap lands with the
+     knock at ~280 rather than trailing on for a second after it.
+     1 rather than 0 for the first, since 0 reads as "unchanged" */
+  const RIPPLE = 220;
+  const DELAY = OWNERS[0].map((o, i) => (o !== OWNERS[1][i] ? 1 + Math.round(((i - FIRST) / (LAST - FIRST || 1)) * RIPPLE) : 0));
+
+  /* here: state 1, weighted, is where it opens */
+  let compact = 1, hot = null, moved = false;
+  let last = null, up = true;
+
+  root.innerHTML = `<div class="ctx">
+    <div class="ctx-head"><span class="ctx-title">${title}</span><button type="button" class="ctx-act"></button></div>
+    <div class="ctx-figure" aria-live="polite"><span class="ctx-num"><span class="ctx-sr"></span><span class="ctx-roll" aria-hidden="true"></span></span><span class="ctx-of"></span></div>
+    <div class="ctx-grid" aria-hidden="true" style="grid-template-rows:repeat(${ROWS}, ${DOT_H}px);grid-template-columns:repeat(${COLS}, ${DOT_W}px);gap:${GAP}px"></div>
+    <div class="ctx-chips">${ORDER.map((ci) => `<button type="button" class="ctx-chip" data-k="${kinds[ci].id}"><i class="ctx-swatch" data-kind="${kinds[ci].id}"></i>${kinds[ci].name}</button>`).join("")}</div>
+    <div class="ctx-of" style="margin-top:12px" data-mode></div>
+  </div>`;
+  const $c = (s) => root.querySelector(s);
+  const ctx = $c(".ctx"), grid = $c(".ctx-grid"), act = $c(".ctx-act"), roll = $c(".ctx-roll"), sr = $c(".ctx-sr"), of = $c(".ctx-figure .ctx-of"), mode = $c("[data-mode]");
+
+  const paintGrid = () => {
+    const owner = OWNERS[compact], was = OWNERS[compact ? 0 : 1];
+    grid.dataset.wave = moved ? (compact ? "a" : "b") : "";
+    if (!moved) grid.removeAttribute("data-wave");
+    /* a dot that changes kind is a new element, so its swap
+       animation starts again; the rest keep theirs */
+    grid.innerHTML = owner.map((o, i) => {
+      const k = o === null ? "" : kinds[o].id;
+      const swap = moved && DELAY[i] ? (o === null ? "drain" : "fill") : "";
+      const style = DELAY[i] && swap
+        ? `transition-delay:${DELAY[i]}ms;animation-delay:${DELAY[i]}ms;--was:${was[i] === null ? "var(--ctx-empty)" : `var(--k-${kinds[was[i]].id})`};--now:${o === null ? "var(--ctx-empty)" : `var(--k-${kinds[o].id})`}`
+        : "";
+      return `<i class="ctx-dot" data-i="${i}" ${k ? `data-kind="${k}"` : ""} ${swap ? `data-swap="${swap}"` : ""} ${style ? `style="${style}"` : ""}></i>`;
+    }).join("");
+    paintHot();
+  };
+
+  const paintHot = () => {
+    const sizes = SIZES[compact];
+    const used = sizes.reduce((a, b) => a + b, 0);
+    /* the big number rolls toward whatever it is showing */
+    const hotKind = hot ? kinds.findIndex((c) => c.id === hot) : -1;
+    const target = hotKind >= 0 ? sizes[hotKind] : used;
+    /* which way the wheels turn: up for more, down for less */
+    if (last !== null && target !== last) up = target > last;
+    last = target;
+    const txt = unit(target);
+    sr.textContent = `${txt} FTE`;
+    Roll(roll, txt, up);
+    of.textContent = hotKind >= 0 ? `FTE · ${kinds[hotKind].name}` : `dari ${unit(WINDOW)} FTE`;
+    ctx.toggleAttribute("data-hot", !!hot);
+    const owner = OWNERS[compact];
+    grid.querySelectorAll(".ctx-dot").forEach((d, i) => {
+      const o = owner[i];
+      d.toggleAttribute("data-dim", hot !== null && (o === null || kinds[o].id !== hot));
+    });
+    root.querySelectorAll(".ctx-chip").forEach((c) => c.toggleAttribute("data-on", hot === c.dataset.k));
+  };
+
+  const paintHead = () => {
+    /* only what reads at a glance: the name, and the one action */
+    act.textContent = compact ? "Alokasi mentah" : "Terapkan bobot";
+    act.toggleAttribute("data-quiet", !compact);
+    mode.textContent = compact ? "Beban tertimbang: alokasi × bobot fase × faktor peran × kompleksitas × sisa progres" : "Alokasi mentah: jumlah % alokasi tanpa bobot";
+  };
+
+  const setHot = (h) => { if (h === hot) return; hot = h; paintHot(); };
+  act.addEventListener("click", () => { moved = true; compact = compact ? 0 : 1; paintHead(); paintGrid(); });
+  /* leaving the field, not the card, is what puts the total back */
+  ctx.addEventListener("pointerleave", () => setHot(null));
+  grid.addEventListener("pointerleave", () => setHot(null));
+  grid.addEventListener("pointerover", (e) => {
+    const d = e.target.closest(".ctx-dot"); if (!d) return;
+    const o = OWNERS[compact][+d.dataset.i];
+    setHot(o === null ? null : kinds[o].id);
+  });
+  root.querySelectorAll(".ctx-chip").forEach((c) => {
+    c.addEventListener("pointerenter", () => setHot(c.dataset.k));
+    c.addEventListener("focus", () => setHot(c.dataset.k));
+    c.addEventListener("blur", () => setHot(null));
+  });
+  root.querySelector(".ctx-chips").addEventListener("pointerleave", () => setHot(null));
+  paintHead(); paintGrid();
+}
+
+/* ══ Card swap ════════════════════════════════════════════
+   A stack of photo cards in depth, each a step further back and up
+   to the right, slanted. Press the front card, or drag and fling it,
+   and it goes straight to the back while the rest step forward.
+   With Auto on it also does that by itself every few seconds,
+   pausing while a pointer is on the stack.
+
+   here: the cards are the projects carrying the most load, painted
+   in their phase colour instead of photos.
+
+   ── A CARD IS ITS SLOT ──────────────────────────────────
+   The order is the only state: which card is in front, which is
+   behind it. A slot is a fixed transform, so moving a card is
+   changing its slot and letting the transition carry it — the card
+   sent back takes the back slot's paint order AT ONCE and travels
+   there behind the others. That needs the paint order to be the
+   z-index and not the depth, so the stage is flat (no preserve-3d)
+   and the perspective sits on the stage itself, aimed at the
+   block's middle as it was when it sat on .csw. */
+function CardSwap(root, cards, {
+  /* off by default: a stack that reshuffles itself on a timer is a
+     thing that keeps moving while you are reading the page */
+  auto = false,
+  /* seconds between swaps, when it is on */
+  every = 4,
+  onFront = () => {},
+} = {}) {
+  const W = 360, H = 350, CW = 196, CH = 246, STEP_X = 34, STEP_Y = 26, STEP_Z = 70;
+  const slot = (k) => `translate3d(${k * STEP_X}px, ${-k * STEP_Y}px, ${-k * STEP_Z}px) skewY(6deg)`;
+  let order = cards.map((c) => c.id);
+  const st = { hover: false, drag: null };
+
+  root.innerHTML = `<div class="csw-fit"><div class="csw" style="width:${W}px;height:${H}px"><div class="csw-stage" style="width:${CW}px;height:${CH}px">${cards.map((c) =>
+    `<div class="csw-card" data-id="${c.id}"><div class="csw-photo" style="background:${c.bg}">${c.html}</div><div class="csw-tag">${c.title}</div></div>`).join("")}</div></div></div>`;
+  const fit = root.querySelector(".csw-fit"), box = root.querySelector(".csw");
+  const els = {}; root.querySelectorAll(".csw-card").forEach((el) => (els[el.dataset.id] = el));
+
+  /* here: the block is 360 wide; in a narrower card it scales down
+     whole rather than being cropped */
+  const resize = () => { const s = Math.min(1, (root.clientWidth || W) / W); box.style.transform = s < 1 ? `scale(${s})` : ""; fit.style.height = H * s + "px"; };
+  resize(); new ResizeObserver(resize).observe(root);
+
+  const paint = () => {
+    cards.forEach((c, n) => {
+      const el = els[c.id], k = order.indexOf(c.id), front = k === 0;
+      el.style.zIndex = cards.length - k;
+      /* the slot is a variable the stylesheet turns into the
+         transform; the drag writes the transform itself, which
+         wins until it is cleared */
+      el.style.setProperty("--t", slot(k));
+      el.toggleAttribute("data-front", front);
+      el.tabIndex = front ? 0 : -1;
+      el.setAttribute("role", front ? "button" : "presentation");
+      if (front) el.setAttribute("aria-label", `${c.title}. Tekan untuk kartu berikutnya.`);
+    });
+    onFront(order[0]);
+  };
+
+  /* send the front card to the back: it takes the back slot now, from
+     wherever it is — the front slot, or where a drag left it */
+  /* every card goes back to its slot: no drag survives a swap, so a
+     card can never be left holding where a hand once put it */
+  const settle = () => { for (const el of Object.values(els)) { el.style.transition = ""; el.style.transform = ""; } };
+  const swap = () => { settle(); order = [...order.slice(1), order[0]]; paint(); };
+
+  /* ── the drag ────────────────────────────────────────────
+     Only the card that was grabbed moves, and the window hears the
+     gesture, so it cannot be lost off the edge of the block or picked
+     up by a card the pointer passes over. A real press takes over from
+     a scripted one. Past a little way the card is on a rubber band, so
+     a long drag cannot carry it out of the block. */
+  let unhook = () => {};
+  const grab = (e, id, front) => {
+    const s = st;
+    if (s.drag && e.isTrusted && !s.drag.real) { unhook(); s.drag = null; settle(); }
+    if (!front || s.drag || e.button !== 0) return;
+    const el = e.currentTarget;
+    s.drag = { id, real: e.isTrusted, pid: e.pointerId, x: e.clientX, y: e.clientY, dx: 0, dy: 0, t: performance.now() };
+    el.style.transition = "none";
+    const rub = (d) => 160 * Math.tanh(d / 160);
+    const mine = (ev) => !!s.drag && ev.pointerId === s.drag.pid && ev.isTrusted === s.drag.real;
+    const mv = (ev) => {
+      if (!mine(ev) || !s.drag) return;
+      const d = s.drag;
+      d.dx = ev.clientX - d.x;
+      d.dy = ev.clientY - d.y;
+      const x = rub(d.dx), y = rub(d.dy);
+      el.style.transform = `${slot(0)} translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${(x * 0.05).toFixed(2)}deg)`;
+    };
+    const up = (ev) => {
+      if (!mine(ev) || !s.drag) return;
+      const d = s.drag;
+      s.drag = null;
+      unhook();
+      const far = Math.hypot(d.dx, d.dy);
+      const quick = far / Math.max(1, performance.now() - d.t) > 0.6;
+      /* a press, or a drag far or quick enough: to the back */
+      if (ev.type !== "pointercancel" && (far < 6 || far > 70 || (quick && far > 24))) { swap(); return; }
+      /* not far enough: it springs back into the front slot */
+      settle();
+    };
+    window.addEventListener("pointermove", mv);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    unhook = () => {
+      window.removeEventListener("pointermove", mv);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      unhook = () => {};
+    };
+  };
+  Object.entries(els).forEach(([id, el]) => {
+    el.addEventListener("pointerdown", (e) => grab(e, id, order[0] === id));
+    /* here: the front card also answers Enter and Space */
+    el.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && order[0] === id) { e.preventDefault(); swap(); el.blur(); els[order[0]].focus(); } });
+  });
+  box.addEventListener("pointerenter", () => { st.hover = true; });
+  box.addEventListener("pointerleave", () => { st.hover = false; });
+
+  /* the timer: one swap every few seconds, unless a hand is on it */
+  if (auto) {
+    const id = window.setInterval(() => {
+      if (!root.isConnected) return window.clearInterval(id);
+      if (!st.hover && !st.drag && !document.hidden) swap();
+    }, Math.max(1.5, every) * 1000);
+  }
+  paint();
+  return { swap };
+}
+
+/* ══ Upload dropzone ══════════════════════════════════════
+   A drop box. Carry a file into it: it uploads there — name,
+   a rolling percentage, a bar — ticks, and the box opens back out.
+
+   here: the files are REAL. Bencho's block carried pretend files
+   from a tray; this one takes an Excel workbook dropped from the
+   desktop, or picked by tapping the box (the only way on a phone),
+   and hands its bytes to the importer when the bar is full.
+
+   ── THE BOX INHALES, AND SWALLOWS ───────────────────────
+   A plain filled box, no edge. A file carried over it is
+   answered before it is let go: the box grows with a small
+   bounce and the arrow lifts toward the hand. Let go and the
+   box gives a little gulp before the upload appears in it.
+
+   ── ONE OF THEM IS TOO BIG ──────────────────────────────
+   The limit is fixed at 5 MB; a file over it, or one that is not a
+   workbook, shakes the box and says so in red. */
+function UploadDropzone(root, {
+  /* how fast a file sends, 0..100 */
+  speed = 70,
+  /* how springy the box lands an upload, 0..100 */
+  bounce = 40,
+  corner = 8,
+  accept = /\.(xlsx|xls)$/i,
+  onFile = async () => {},
+} = {}) {
+  const still = stillness();
+  const MAX = 5;
+  /* what it says the second time, and after */
+  const SNARK = [
+    "Masih terlalu besar. Ukurannya tidak berubah.",
+    "Didorong lebih keras tidak akan membantu",
+    "Sudah coba dikompres?",
+    "Kotaknya mulai penuh alasan",
+    "Tidak.",
+  ];
+  const fmt = (b) => (b >= 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${Math.round(b / 1e3)} KB`);
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const UpIcon = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>`;
+  const Check = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
+
+  /* ── the file icon ─────────────────────────────────────────
+     After Untitled UI's: a rounded page on a 40 grid with a thin
+     grey outline and a folded corner, and the extension on a
+     coloured label that sticks out past the page's left edge —
+     the colour carries the kind before the word is read. */
+  const Page = (ext, tint, size = 40) => `<svg class="upl-page" width="${size}" height="${size}" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+    <path class="upl-page-line" d="M7.75 4A3.25 3.25 0 0 1 11 .75h16c.121 0 .238.048.323.134l10.793 10.793a.46.46 0 0 1 .134.323v24A3.25 3.25 0 0 1 35 39.25H11A3.25 3.25 0 0 1 7.75 36z"/>
+    <path class="upl-page-line" d="M27 .5V8a4 4 0 0 0 4 4h7.5"/>
+    <rect width="29" height="16" x="1" y="18" rx="8" fill="${tint}"/>
+    <text x="15.5" y="29.1" text-anchor="middle" font-size="9" class="upl-page-ext">${ext}</text></svg>`;
+    /* 9 units on the 40 grid: the mark is part of the drawing and
+       scales with it, so its size lives here, not in the stylesheet */
+
+  const Roll = (value) => {
+    const s = String(Math.round(value));
+    return `<span class="upl-roll" aria-label="${s}%">${s.split("").map((d) =>
+      `<span class="upl-roll-col"><span class="upl-roll-strip" style="transform:translateY(${-Number(d)}em)">${"0123456789".split("").map((n) => `<span>${n}</span>`).join("")}</span></span>`).join("")}%</span>`;
+  };
+
+  root.innerHTML = `<div class="upl" style="--upl-r:${Math.max(0, corner)}px;--upl-spring:cubic-bezier(0.3, ${1 + (bounce / 100) * 0.9}, 0.4, 1)">
+    <div class="upl-zone-wrap"><div class="upl-zone" role="button" tabindex="0" aria-live="polite" aria-label="Impor workbook Excel. Tarik file ke sini atau tekan untuk memilih."></div></div>
+    <input type="file" accept=".xlsx,.xls" hidden></div>`;
+  const wrap = root.querySelector(".upl-zone-wrap"), zone = root.querySelector(".upl-zone"), input = root.querySelector("input");
+
+  let phase = { kind: "idle" }, over = false, refuse = null, tries = 0, cool = 0, raf = 0, depth = 0;
+  const timers = [];
+  const later = (fn, ms) => timers.push(window.setTimeout(fn, ms));
+
+  const paint = () => {
+    zone.toggleAttribute("data-over", over);
+    zone.toggleAttribute("data-refuse", !!refuse);
+    zone.toggleAttribute("data-busy", phase.kind !== "idle");
+    if (phase.kind === "idle") {
+      zone.innerHTML = `<span class="upl-icon">${UpIcon}</span><span class="upl-say"><b>${refuse ?? (over ? "Lepas untuk impor" : "Tarik workbook ke sini")}</b><span>.xlsx hingga ${MAX} MB · atau tekan untuk memilih</span></span>`;
+      zone.style.width = ""; zone.style.height = "";
+      return;
+    }
+    const f = phase.f;
+    const p = phase.kind === "up" ? phase.p : 1;
+    let now = zone.querySelector(".upl-now");
+    if (!now) {
+      zone.innerHTML = `<span class="upl-now">${Page(f.name.split(".").pop().toUpperCase(), "#079455", 36)}<span class="upl-text"><span class="upl-name"></span><span class="upl-meta"></span><span class="upl-track"><span class="upl-bar"></span></span></span><span class="upl-end"></span></span>`;
+      now = zone.querySelector(".upl-now");
+      now.querySelector(".upl-name").textContent = f.name;
+      /* ── the box hugs the upload ─────────────────────────────
+         While a file is in it the box closes in round the upload
+         row — measured, because the row is as wide as its name — and
+         back to idle it opens out to the full drop box again. Width
+         and height, never a scale, so its corner stays the corner. It
+         shrinks inside a slot of fixed size, so nothing below it moves. */
+      zone.style.width = `${now.offsetWidth + 32}px`;
+      zone.style.height = `${now.offsetHeight + 28}px`;
+    }
+    const meta = now.querySelector(".upl-meta");
+    if (phase.kind === "done") meta.textContent = `${fmt(f.size)} · ${phase.msg || "Terimpor"}`;
+    else {
+      /* here: the wheels are kept between frames, so each strip's
+         transition carries it to the next digit rather than jumping */
+      if (!meta.querySelector(".upl-r")) meta.innerHTML = `${fmt(f.size)} · <span class="upl-r"></span>`;
+      const r = meta.querySelector(".upl-r"), s = String(Math.round(p * 100)), cols = r.querySelectorAll(".upl-roll-col");
+      if (cols.length !== s.length) r.innerHTML = Roll(p * 100);
+      else s.split("").forEach((d, i) => { cols[i].firstElementChild.style.transform = `translateY(${-Number(d)}em)`; });
+    }
+    now.querySelector(".upl-bar").style.transform = `scaleX(${p})`;
+    /* the tick's room is kept from the start, so the box
+       is its final size before the tick arrives */
+    if (phase.kind === "done" && !now.querySelector(".upl-tick")) now.querySelector(".upl-end").innerHTML = `<span class="upl-tick">${Check}</span>`;
+  };
+
+  /* ── trying again ─────────────────────────────────────────
+     The first refusal is plain. Try the same file again and the
+     box starts to answer back, a new line each time, the last one
+     repeating — until a file that fits goes through, which puts it
+     back to being polite. */
+  const refuseIt = (first) => {
+    const n = tries++;
+    refuse = n === 0 ? first : SNARK[Math.min(n - 1, SNARK.length - 1)];
+    paint();
+    if (!still) wrap.animate([{ transform: "translateX(0)" }, { transform: "translateX(-7px)" }, { transform: "translateX(6px)" }, { transform: "translateX(-4px)" }, { transform: "translateX(2px)" }, { transform: "translateX(0)" }], { duration: 420 });
+    later(() => { refuse = null; paint(); }, 1800);
+    /* "in a row" means close together: leave it alone a while and
+       the next refusal is the polite one again */
+    clearTimeout(cool);
+    cool = window.setTimeout(() => { tries = 0; }, 8000);
+  };
+
+  /* ── the wire ────────────────────────────────────────────
+     here: the bytes are read at once; the bar runs its own uneven
+     climb so the arrival is seen, and the importer runs when it is full */
+  const send = (f) => {
+    const bytes = f.arrayBuffer();
+    const finish = async () => {
+      try {
+        const msg = await onFile(await bytes, f);
+        tries = 0;
+        phase = { kind: "done", f, msg }; paint();
+        /* the box opens back out, ready to go again */
+        later(() => { phase = { kind: "idle" }; paint(); }, 1500);
+      } catch (err) {
+        phase = { kind: "idle" }; paint();
+        refuseIt(err && err.message ? err.message : "Workbook tidak bisa dibaca");
+      }
+    };
+    if (still) { finish(); return; }
+    phase = { kind: "up", f, p: 0 }; paint();
+    let p = 0, prev = 0;
+    const secs = (4 - (clamp(speed, 0, 100) / 100) * 3.2) * (0.7 + Math.min(1, f.size / 5e6) * 0.6);
+    const tick = (t) => {
+      const dt = prev ? Math.min(0.05, (t - prev) / 1000) : 0;
+      prev = t;
+      /* uneven on purpose: a steady climb reads as a timer */
+      p = Math.min(1, p + (dt / secs) * (0.4 + Math.random() * 1.2));
+      if (p >= 1) { raf = 0; phase = { kind: "up", f, p: 1 }; paint(); finish(); return; }
+      phase = { kind: "up", f, p }; paint();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  };
+
+  const take = (f) => {
+    if (!f || phase.kind !== "idle") return;
+    if (!accept.test(f.name)) return refuseIt("Hanya file .xlsx atau .xls");
+    if (f.size > MAX * 1e6) return refuseIt(`Terlalu besar, maksimal ${MAX} MB`);
+    /* the gulp: the box takes the file in before the upload appears */
+    if (!still) { zone.setAttribute("data-gulp", ""); later(() => zone.removeAttribute("data-gulp"), 460); }
+    later(() => send(f), still ? 0 : 220);
+  };
+
+  zone.addEventListener("dragenter", (e) => { e.preventDefault(); depth++; if (phase.kind === "idle" && !over) { over = true; paint(); } });
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+  zone.addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; over = false; paint(); } });
+  zone.addEventListener("drop", (e) => { e.preventDefault(); depth = 0; over = false; paint(); take(e.dataTransfer.files[0]); });
+  zone.addEventListener("click", () => { if (phase.kind === "idle") input.click(); });
+  zone.addEventListener("keydown", (e) => { if ((e.key === "Enter" || e.key === " ") && phase.kind === "idle") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => { take(input.files[0]); input.value = ""; });
+  paint();
+}
+
+
+/* ---------- Bencho mounts ---------- */
+function mountCtx(){const el=$('#ctx');if(!el)return;const K=[['ded','DED'],['feed','FEED'],['pre','Pre-FEED'],['ini','Inisiasi']];
+  const raw=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+a.alloc,0)/10);
+  const wt=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+aLoad(a),0)/10);
+  ContextMeter(el,{kinds:K.map(([id,name])=>({id,name})),sizesRaw:raw,sizesWeighted:wt,window:Math.round(S.people.reduce((s,e)=>s+(e.cap||100),0)/10)})}
+function mountCsw(){const el=$('#csw');if(!el)return;const top=[...S.projects].sort((a,b)=>projLoad(b.id)-projLoad(a.id)).slice(0,4);if(!top.length){el.innerHTML='<div class="empty">Belum ada proyek</div>';return}
+  const shade=c=>`linear-gradient(160deg, ${c}, color-mix(in srgb, ${c} 62%, #000))`;
+  CardSwap(el,top.map(p=>({id:p.id,title:`${p.phase} · ${esc(p.id)}`,bg:shade(PH_COLOR[p.phase]),html:`<span class="k">${esc(p.id)} · ${esc(p.fac)}</span><span class="n">${esc(p.name)}</span><span class="f">${team(p.id).length} personel · ${CX_LABEL[p.cx]}</span><span class="big">${f2(projLoad(p.id)/100)}<small>FTE</small></span><span class="f">Progres ${p.progress}%</span><span class="bar"><i style="width:${p.progress}%"></i></span>`})),
+  {onFront:id=>{const p=proj(id),i=top.findIndex(x=>x.id===id);$('#cswInfo').innerHTML=`<span class="muted">${i+1}/${top.length}</span><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b><button class="btn sm" data-act="openProjectBtn" data-id="${p.id}">Detail</button>`}})}
+
+/* ---------- boot ---------- */
+shell();Particles($('#logoCv'),{size:36});render();
+(async()=>{try{if(window.claude&&claude.use){ART=await claude.use('artifact');DL=await claude.use('downloads')}}catch(e){}})();
+</script>
+</body>
+</html>
