@@ -992,7 +992,7 @@ function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(p
 function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
 
 /* ---------- UI state ---------- */
-const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',wRole:'Semua',lcOff:{},open:{}};
+const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',aLimit:50,wRole:'Semua',lcOff:{},open:{}};
 function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
 function render(){
   const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
@@ -1019,7 +1019,8 @@ function table(id,cols,rows,opt={}){
   const st=UI.sort[id]||opt.sort||{};let rs=[...rows];
   if(st.key){const c=cols.find(c=>c.key===st.key);if(c){const g=c.val||(r=>r[c.key]);rs.sort((a,b)=>{const x=g(a),y=g(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'id'))*(st.dir==='desc'?-1:1)})}}
   if(!rs.length)return `<div class="empty">${opt.empty||'Belum ada data'}</div>`;
-  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="enter ${opt.rowAct?'click':''}" style="animation-delay:${Math.min(i,15)*18}ms" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const total=rs.length;if(opt.limit)rs=rs.slice(0,opt.limit);const more=total-rs.length;
+  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="enter ${opt.rowAct?'click':''}" style="animation-delay:${Math.min(i,15)*18}ms" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${more>0?`<div style="text-align:center;margin-top:12px"><button class="btn" data-act="${opt.moreAct}">Tampilkan lebih banyak (${more} lagi)</button></div>`:''}`;
 }
 
 /* charts */
@@ -1160,7 +1161,7 @@ PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p==
       {key:'alloc',label:'Alokasi',num:1,render:r=>`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
       {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
       {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
-    ],rows,{sort:{key:'p',dir:'asc'}})}</div></div>`};
+    ],rows,{sort:{key:'p',dir:'asc'},limit:UI.aLimit,moreAct:'moreAsg'})}</div></div>`};
 function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
   <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
@@ -1266,7 +1267,7 @@ function phasePick(btn){$('.popover')?.remove();const p=proj(btn.dataset.id);con
 /* ---------- actions ---------- */
 let ART=null,DL=null;
 const ACT={
-  cmd:openCmd,close:closeDialog,
+  cmd:openCmd,close:closeDialog,moreAsg(){UI.aLimit+=50;render()},
   theme(){const t=getTheme()==='dark'?'light':'dark';try{localStorage.setItem('wl-theme',t)}catch(e){}applyTheme();if(route()==='analisis'||route()==='dashboard')render()},
   seg(b){const id=b.dataset.id,v=b.dataset.val;$$(`[data-seg="${id}"] button`).forEach(x=>x.classList.toggle('on',x===b));placePill(b.parentElement);
     if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}else if(id==='impmode'&&IMP){IMP.mode=v==='Gabung'?'merge':'replace';IMP.draw()}},
