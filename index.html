@@ -994,7 +994,7 @@ function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(p
 function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
 
 /* ---------- UI state ---------- */
-const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',wRole:'Semua',lcOff:{},open:{}};
+const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',aLimit:50,wRole:'Semua',lcOff:{},open:{}};
 function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
 function render(){
   const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
@@ -1023,10 +1023,11 @@ function spark(vals,color){const w=240,h=36,mx=Math.max(110,...vals);const pts=v
 
 /* sortable table */
 function table(id,cols,rows,opt={}){
-  const st=UI.sort[id]||opt.sort||{};let rs=[...rows];
+  const st=UI.sort[id]||opt.sort||{};let rs=[...rows];const total=rs.length;
   if(st.key){const c=cols.find(c=>c.key===st.key);if(c){const g=c.val||(r=>r[c.key]);rs.sort((a,b)=>{const x=g(a),y=g(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'id'))*(st.dir==='desc'?-1:1)})}}
   if(!rs.length)return `<div class="empty">${opt.empty||'Belum ada data'}</div>`;
-  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="enter ${opt.rowAct?'click':''}" style="animation-delay:${Math.min(i,15)*18}ms" ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  if(opt.limit)rs=rs.slice(0,opt.limit);const more=total-rs.length;
+  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="${opt.noAnim?'':'enter '}${opt.rowAct?'click':''}" ${opt.noAnim?'':`style="animation-delay:${Math.min(i,15)*18}ms"`} ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${more>0?`<div style="text-align:center;margin-top:12px"><button class="btn" data-act="${opt.moreAct}">Tampilkan lebih banyak (${more} lagi)</button></div>`:''}`;
 }
 
 /* charts */
@@ -1154,10 +1155,10 @@ PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'
   <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · ${esc(e.level||'Middle')} · ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
 MOUNT.personel=()=>animateRings();
 
-PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
-  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions"><button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
+PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
+  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions">${mob?`<button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button>`:''}<button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
   <div class="grid g-12">
-    <div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>
+    ${mob?'':`<div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>`}
     <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div><div class="right"><select class="in" style="width:auto" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
     ${table('asg',[
       {key:'p',label:'Proyek',render:r=>`<span class="code">${esc(r.p)}</span> ${esc(r.pp.name)}`},
@@ -1167,7 +1168,7 @@ PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p==
       {key:'alloc',label:'Alokasi',num:1,render:r=>`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
       {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
       {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
-    ],rows,{sort:{key:'p',dir:'asc'}})}</div></div>`};
+    ],rows,{sort:{key:'p',dir:'asc'},limit:UI.aLimit,moreAct:'moreAsg',noAnim:1})}</div></div>`};
 function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
   <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
   <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
@@ -1308,6 +1309,7 @@ const ACT={
   openProjectBtn(b){openProject(b.dataset.id)},
   newProject(){projectForm()},editProject(b){projectForm(proj(b.dataset.id))},
   newPerson(){personForm()},editPerson(b){personForm(person(b.dataset.id))},
+  moreAsg(){UI.aLimit+=50;render()},
   newAssign(){openDialog(`<div class="dh"><h3>Penugasan baru</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm()}`);updAssignPreview()},
   assignTo(b){const id=b.dataset.id;openDialog(`<div class="dh"><h3>Tambah anggota ${esc(id)}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm(id)}`);updAssignPreview()},
   delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn');render()},
@@ -1345,7 +1347,7 @@ document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k||isR
   else if(k==='alloc'){const a=S.assigns.find(x=>x.id===t.dataset.id);const v=clamp(+t.value||0,0,100);if(a){a.alloc=v;markDirty();const td=t.closest('tr').querySelector('td:nth-child(6) b');if(td)td.textContent=f1(aLoad(a))+'%'}}
 });
 document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;if(isRO())return;
-  if(k==='aFilter'){UI.aFilter=t.value;render()}
+  if(k==='aFilter'){UI.aFilter=t.value;UI.aLimit=50;render()}
   if(k==='alloc'){render()}
 });
 /* ---------- Excel: template, export, import ----------
