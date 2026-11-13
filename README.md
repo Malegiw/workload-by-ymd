@@ -26,11 +26,17 @@ Status utilisasi: di bawah 70% **Tersedia**, 70–100% **Optimal**, di atas 100%
 | Analisis disiplin | Beban per fase, komposisi beban, tren bulanan, struktur Disiplin → Personel → Proyek |
 | Pengaturan | Bobot dan faktor, ekspor/impor Excel, reset ke data contoh |
 
-## Data
+## Data dan sinkronisasi antar perangkat
 
 - Saat pertama dibuka, aplikasi berisi **data contoh**.
-- Di GitHub Pages, perubahan disimpan di browser masing-masing pengguna (localStorage).
-- Untuk memindahkan atau membagikan data, gunakan **Ekspor Excel**. Impor menerima format yang sama: sheet `Proyek`, `Personel`, dan `Penugasan`, dengan sheet `Bobot Fase` dan `Faktor Peran` sebagai opsi.
+- Tanpa sinkronisasi, perubahan hanya tersimpan di browser perangkat itu.
+- Dengan **Sinkronisasi GitHub** (Pengaturan), data disimpan sebagai `data.json` di sebuah repo **Private** terpisah, jadi HP, iPad, dan laptop memakai data yang sama.
+  - Perubahan dikirim otomatis 2,5 detik setelah Anda berhenti mengedit, dan setiap pengiriman menjadi satu commit (riwayat perubahan ikut tersimpan).
+  - Perangkat lain memeriksa pembaruan tiap 30 detik dan saat aplikasi dibuka kembali.
+  - Jika dua perangkat mengubah data bersamaan, aplikasi meminta Anda memilih versi mana yang dipakai. Tidak ada data yang tertimpa diam-diam.
+  - Jika offline, perubahan tetap di perangkat dan dikirim saat online.
+- Token GitHub hanya disimpan di browser tiap perangkat. Jangan membagikannya.
+- Impor Excel: unduh `Template-Workload.xlsx` (Pengaturan → Unduh template Excel), isi sheet `Proyek`, `Personel`, `Penugasan`, lalu impor lewat tombol Impor Excel. Ada pratinjau sebelum data berubah, mode Gabung atau Ganti semua, dan daftar baris bermasalah. Hasil ekspor memakai format yang sama sehingga bisa diedit di Excel lalu diimpor kembali. `Bobot Fase`, `Faktor Peran`, `Kompleksitas` bersifat opsional.
 
 ## Menjalankan di komputer
 
@@ -43,21 +49,4 @@ python -m http.server 8000
 
 ## Komponen pihak ketiga
 
-Logo (Particles), Context meter, Card swap, dan Upload dropzone diadaptasi dari [Bencho](https://bencho.dev) (lisensi MIT). Detailnya ada di `THIRD_PARTY_NOTICES.md`. Pembacaan Excel memakai [SheetJS](https://sheetjs.com) dari CDN.
-
-# Third-party notices
-
-## Bencho (bencho.dev)
-
-These components were adapted from Bencho, which is released under the MIT License (see https://bencho.dev/licence):
-
-- Particles: used for the app logo
-- Context meter: used for the team capacity panel
-- Card swap: used for the highest-load project stack
-- Upload dropzone: used for Excel import
-
-They were ported from React to plain JavaScript. Bencho's comments are kept in the source, and every change is marked with "here:". Before publishing, copy the full MIT license text and copyright line from https://bencho.dev/licence into this file.
-
-## SheetJS Community Edition
-
-Loaded from cdnjs at runtime to read and write Excel files. Licensed under Apache License 2.0.
+Logo (Particles), Context meter, Card swap, dan Upload dropzone diadaptasi dari [Bencho](https://bencho.dev) (lisensi MIT). Detailnya ada di `THIRD_PARTY_NOTICES.md`. Template, ekspor, dan impor Excel memakai [ExcelJS](https://github.com/exceljs/exceljs) (MIT) dari CDN.

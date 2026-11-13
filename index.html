@@ -4,7 +4,7 @@
 <meta charset="utf-8" data-k>
 <meta name="viewport" content="width=device-width, initial-scale=1" data-k>
 <title data-k>Workload by YMD</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" data-k></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js" data-k></script>
 <style data-k>
 :root{
   --background:#F5F5F5;--surface:#FFFFFF;--surface-2:#FAFAFA;--surface-3:#F0F0F0;
@@ -240,15 +240,6 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 .tree .ind1{padding-left:30px}.tree .ind2{padding-left:58px}
 .meter{display:flex;align-items:center;gap:8px}
 .meter .pbar{flex:1;max-width:140px}
-function importWorkbook(buf){if(!window.XLSX)throw new Error('Library Excel belum termuat');const wb=XLSX.read(buf);const sh=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n]):null;
-    const P=sh('Proyek'),E=sh('Personel'),A=sh('Penugasan');if(!P||!E||!A)throw new Error('Butuh sheet Proyek, Personel, Penugasan');
-    const toISO=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v||'').slice(0,10);
-    const projects=P.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),fac:String(r['Fasilitas']||''),phase:PH.includes(r['Fase'])?r['Fase']:'FEED',cx:clamp(+r['Kompleksitas']||2,1,3),start:toISO(r['Mulai']),end:toISO(r['Selesai']),progress:clamp(+r['Progres (%)']||0,0,100)}));
-    const people=E.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),role:ROLES.includes(r['Disiplin'])?r['Disiplin']:'Civil/Structure',cap:clamp(+r['Kapasitas (%)']||100,10,100)}));
-    const assigns=A.map(r=>({id:String(r['ID']||uid('a')),p:String(r['Proyek']),e:String(r['Personel']),alloc:clamp(+r['Alokasi (%)']||0,0,100)})).filter(a=>projects.some(p=>p.id===a.p)&&people.some(x=>x.id===a.e));
-    const BW=sh('Bobot Fase');if(BW)BW.forEach(r=>{if(PH.includes(r['Fase']))S.settings.phaseW[r['Fase']]=+r['Bobot']});
-    const RF=sh('Faktor Peran');if(RF)RF.forEach(r=>{if(ROLES.includes(r['Disiplin']))PH.forEach(ph=>{if(r[ph]!=null)S.settings.roleF[r['Disiplin']][ph]=+r[ph]})});
-    Object.assign(S,{projects,people,assigns});markDirty();return `${projects.length} proyek, ${people.length} personel, ${assigns.length} penugasan`}
 /* forms */
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .field label{font-size:13px;font-weight:600}
@@ -795,9 +786,127 @@ let S,DIRTY=false;
   let emb=null;try{emb=JSON.parse(document.getElementById('wl-state').textContent)}catch(e){}
   S=emb||seed();
   try{const d=JSON.parse(localStorage.getItem('wl-draft')||'null');if(d&&d.updatedAt>(S.updatedAt||0)){S=d;if(window.claude){DIRTY=true;setTimeout(()=>toast('Draf yang belum disimpan dipulihkan','warn'),600)}}}catch(e){}
+  /* GitHub mode: edits made offline, or not yet sent, are still waiting on this device */
+  try{if(!window.claude&&localStorage.getItem('wl-gh')&&localStorage.getItem('wl-gh-dirty')==='1')DIRTY=true}catch(e){}
 })();
-function markDirty(){DIRTY=true;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}updateSave()}
+let REV=0;
+function markDirty(){DIRTY=true;REV++;S.updatedAt=Date.now();try{localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}if(GH&&GHOK){try{localStorage.setItem('wl-gh-dirty','1')}catch(e){}ghSchedule()}else updateSave()}
 const uid=p=>p+Math.random().toString(36).slice(2,8);
+
+/* ---------- GitHub sync ----------
+   The data lives in one JSON file in a PRIVATE repo, read and written
+   through the GitHub contents API with a fine-grained token that only
+   reaches that repo. Every device that has the token sees the same data.
+   - changes are sent 2.5 s after the last edit; each send is a commit
+   - the file's sha is the version: a write made on a stale sha is refused
+     by GitHub, which is how two devices editing at once are caught
+   - other devices are checked every 30 s (a conditional request, so an
+     unchanged file costs nothing against the rate limit)
+   - offline: the edit stays on the device, flagged, and goes up later
+   The page inside claude.ai cannot reach api.github.com, so it is off there. */
+const GHOK=!window.claude;
+let GH=null,ghSha=null,ghEtag=null,ghBusy=false,ghTimer=0,ghPoll=0,SYNC='off',SYNC_MSG='',conflictOpen=false;
+try{GH=JSON.parse(localStorage.getItem('wl-gh')||'null');ghSha=localStorage.getItem('wl-gh-sha')||null}catch(e){}
+const b64e=t=>{const u=new TextEncoder().encode(t);let b='';for(let i=0;i<u.length;i+=0x8000)b+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(b)};
+const b64d=t=>new TextDecoder().decode(Uint8Array.from(atob(t.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+const ghPath=()=>GH.path.split('/').map(encodeURIComponent).join('/');
+function ghFetch(method,body,etag,url){
+  const h={Accept:'application/vnd.github+json',Authorization:'Bearer '+GH.token};
+  if(body)h['Content-Type']='application/json';
+  if(etag)h['If-None-Match']=etag;
+  const u=url||`https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${ghPath()}`+(method==='GET'?`?ref=${encodeURIComponent(GH.branch)}`:'');
+  return fetch(u,{method,headers:h,body:body?JSON.stringify(body):undefined,cache:'no-store'});
+}
+async function ghErr(r){let m='';try{m=(await r.json()).message||''}catch(e){}
+  if(r.status===401)return new Error('Token ditolak atau sudah kedaluwarsa. Buat token baru.');
+  if(r.status===403)return new Error(/rate limit/i.test(m)?'Batas permintaan GitHub tercapai, coba lagi sebentar lagi.':'Token tidak punya izin tulis. Pada token, set Contents ke Read and write.');
+  if(r.status===404)return new Error('Repo atau branch tidak ditemukan, atau token tidak punya akses ke repo itu.');
+  return new Error(m||('GitHub menjawab '+r.status));}
+const ghNet=e=>e&&e.name==='TypeError'?new Error('Tidak ada koneksi. Perubahan aman di perangkat ini dan dikirim saat online.'):e;
+function setSync(st,msg=''){SYNC=st;SYNC_MSG=msg;updateSave();const el=$('#ghStatus');if(el)el.innerHTML=ghStatusHtml()}
+function ghStatusHtml(){if(!GH)return '';const m={ok:['b-opt','Tersinkron'],saving:['b-avail','Menyimpan…'],dirty:['b-avail','Menunggu dikirim'],load:['b-avail','Memuat…'],err:['b-over','Gagal']}[SYNC]||['b-neutral','Siap'];return `<span class="badge ${m[0]}">${m[1]}</span>${SYNC_MSG?` <span class="muted" style="font-size:12px">${esc(SYNC_MSG)}</span>`:''}`}
+function ghFlag(v){try{localStorage.setItem('wl-gh-dirty',v?'1':'')}catch(e){}}
+function ghStore(sha){ghSha=sha;try{localStorage.setItem('wl-gh-sha',sha||'');localStorage.setItem('wl-draft',JSON.stringify(S))}catch(e){}}
+function ghValid(o){return o&&Array.isArray(o.projects)&&Array.isArray(o.people)&&Array.isArray(o.assigns)&&o.settings&&o.settings.phaseW}
+function ghAdopt(o,sha){const d=seed();o.settings=Object.assign({},d.settings,o.settings);S=o;DIRTY=false;ghFlag(false);ghStore(sha)}
+function ghSchedule(){if(!GH||!GHOK)return;if(SYNC!=='saving')setSync('dirty');clearTimeout(ghTimer);ghTimer=setTimeout(()=>ghPush(),2500)}
+async function ghPush(force){
+  if(!GH||!GHOK||ghBusy||conflictOpen)return;
+  clearTimeout(ghTimer);ghBusy=true;setSync('saving');
+  const rev=REV;
+  try{
+    if(force){const r=await ghFetch('GET');if(r.ok)ghSha=(await r.json()).sha;else if(r.status===404)ghSha=null;else throw await ghErr(r)}
+    const body={message:'Workload by YMD: '+new Date().toISOString().slice(0,16).replace('T',' '),content:b64e(JSON.stringify(S)),branch:GH.branch};
+    if(ghSha)body.sha=ghSha;
+    const r=await ghFetch('PUT',body);
+    if(r.status===409||r.status===422){ghBusy=false;await ghConflict();return}
+    if(!r.ok)throw await ghErr(r);
+    const j=await r.json();ghEtag=null;ghStore(j.content.sha);
+    /* an edit made while this was in flight is still waiting */
+    if(REV===rev){DIRTY=false;ghFlag(false);setSync('ok')}else{ghBusy=false;ghSchedule()}
+  }catch(e){setSync('err',ghNet(e).message)}
+  finally{ghBusy=false}
+}
+async function ghPull(initial){
+  if(!GH||!GHOK||ghBusy||conflictOpen)return;
+  try{
+    if(initial)setSync('load');
+    const r=await ghFetch('GET',null,initial?null:ghEtag);
+    if(r.status===304)return;
+    if(r.status===404){
+      /* the repo is there but the file is not: this device makes it */
+      const rr=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
+      if(!rr.ok)throw await ghErr(r);
+      ghSha=null;await ghPush();return}
+    if(!r.ok)throw await ghErr(r);
+    ghEtag=r.headers.get('ETag');
+    const j=await r.json();
+    if(j.sha===ghSha){if(!DIRTY)setSync('ok');else ghSchedule();return}
+    let o;try{o=JSON.parse(b64d(j.content))}catch(e){throw new Error('Isi file di GitHub bukan JSON yang valid')}
+    if(!ghValid(o))throw new Error('Isi file di GitHub bukan data Workload')
+    if(DIRTY){await ghConflict(j,o);return}
+    ghAdopt(o,j.sha);setSync('ok');render();toast(initial?'Data dimuat dari GitHub':'Data diperbarui dari perangkat lain')
+  }catch(e){setSync('err',ghNet(e).message)}
+}
+/* two versions: the file on GitHub moved on while this device was
+   holding changes. Nothing is overwritten until one is picked */
+async function ghConflict(j,o){
+  if(conflictOpen)return;
+  try{
+    if(!j){const r=await ghFetch('GET');if(r.status===404){ghSha=null;return ghPush()}if(!r.ok)throw await ghErr(r);j=await r.json();o=JSON.parse(b64d(j.content))}
+  }catch(e){setSync('err',ghNet(e).message);return}
+  conflictOpen=true;setSync('err','Data berbeda di GitHub');
+  const sum=d=>`${(d.projects||[]).length} proyek · ${(d.people||[]).length} personel · ${(d.assigns||[]).length} penugasan`;
+  const when=d=>d.updatedAt?new Date(d.updatedAt).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'data contoh';
+  openDialog(`<div class="dh"><h3>Data berbeda</h3></div><p>Data di GitHub sudah diubah dari perangkat lain, sementara perangkat ini juga punya perubahan yang belum terkirim. Pilih versi yang dipakai.</p>
+  <div class="compare" style="grid-template-columns:1fr 1fr;text-align:left"><div class="card" style="box-shadow:none;border:1px solid var(--border)"><b>Di GitHub</b><div class="muted" style="font-size:12px">${when(o)}</div><div style="margin-top:6px">${sum(o)}</div></div><div class="card" style="box-shadow:none;border:1px solid var(--border)"><b>Di perangkat ini</b><div class="muted" style="font-size:12px">${when(S)}</div><div style="margin-top:6px">${sum(S)}</div></div></div>
+  <div class="foot"><button class="btn" id="cfRemote">Pakai versi GitHub</button><button class="btn primary" id="cfLocal">Timpa dengan versi ini</button></div>`);
+  $('#cfRemote').onclick=()=>{closeDialog();ghAdopt(o,j.sha);setSync('ok');render();toast('Memakai versi GitHub')};
+  $('#cfLocal').onclick=()=>{closeDialog();ghSha=j.sha;ghPush()};
+}
+async function ghConnect(d){
+  const m=String(d.repo||'').trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\.git$/,'').replace(/^\/|\/$/g,'').match(/^([\w.-]+)\/([\w.-]+)$/);
+  if(!m){toast('Tulis repo sebagai pemilik/nama, misalnya Malegiw/workload-data','err');return}
+  const token=String(d.token||'').trim();if(!token){toast('Token belum diisi','err');return}
+  GH={owner:m[1],repo:m[2],path:(String(d.path||'data.json').trim()||'data.json').replace(/^\//,''),branch:String(d.branch||'main').trim()||'main',token};
+  try{const r=await ghFetch('GET',null,null,`https://api.github.com/repos/${GH.owner}/${GH.repo}`);
+    if(!r.ok){const e=await ghErr(r);GH=null;toast(e.message,'err');return}
+    const info=await r.json();if(!info.private&&!confirm_public()){GH=null;return}
+  }catch(e){GH=null;toast(ghNet(e).message,'err');return}
+  try{localStorage.setItem('wl-gh',JSON.stringify(GH));localStorage.removeItem('wl-gh-sha')}catch(e){}
+  ghSha=null;ghEtag=null;
+  /* a device that already holds edits asks before it takes the remote's */
+  DIRTY=S.updatedAt>0;ghFlag(DIRTY);
+  ghStart();await ghPull(true);render();if(SYNC==='ok')toast('Tersambung ke GitHub')
+}
+/* a public data repo would put the names and workloads on the open web */
+function confirm_public(){toast('Repo data harus Private. Ubah di Settings repo, bagian Danger Zone → Change visibility.','err');return false}
+function ghStart(){clearInterval(ghPoll);if(!GH||!GHOK)return;ghPoll=setInterval(()=>{if(document.hidden||ghBusy||conflictOpen)return;if(DIRTY)ghPush();else ghPull()},30000)}
+function ghDisconnect(){clearInterval(ghPoll);clearTimeout(ghTimer);GH=null;ghSha=null;ghEtag=null;SYNC='off';SYNC_MSG='';try{['wl-gh','wl-gh-sha','wl-gh-dirty'].forEach(k=>localStorage.removeItem(k))}catch(e){}updateSave()}
+function ghBoot(){if(!GH||!GHOK)return;ghStart();ghPull(true);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(DIRTY)ghPush();else ghPull()}});
+  addEventListener('online',()=>{if(DIRTY)ghPush();else ghPull()});
+  addEventListener('beforeunload',e=>{if(DIRTY){e.preventDefault();e.returnValue=''}})}
 
 /* ---------- helpers ---------- */
 const $=(s,r=document)=>r.querySelector(s);
@@ -867,7 +976,9 @@ function shell(){
   <main id="main"></main></div><div id="tip"></div><div class="toasts" id="toasts"></div>`;
   applyTheme();updateSave();
 }
-function updateSave(){const b=$('#saveBtn');if(!b)return;b.classList.toggle('dirty',DIRTY);b.querySelector('.lbl').textContent=DIRTY?'Simpan':'Tersimpan'}
+function updateSave(){const b=$('#saveBtn');if(!b)return;
+  if(GH&&GHOK){const m={ok:'Tersinkron',saving:'Menyimpan…',dirty:'Simpan',err:'Gagal · ulangi',load:'Memuat…'}[SYNC]||'Tersinkron';b.classList.toggle('dirty',SYNC==='dirty'||SYNC==='err');b.querySelector('.lbl').textContent=m;b.title=SYNC_MSG||'';return}
+  b.title='';b.classList.toggle('dirty',DIRTY);b.querySelector('.lbl').textContent=DIRTY?'Simpan':'Tersimpan'}
 function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}catch(e){return 'light'}}
 function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
 
@@ -976,7 +1087,7 @@ function toast(msg,type='ok'){const c=$('#toasts');if(!c)return;const t=document
 
 /* dialog */
 function openDialog(html,{side=false,cls=''}={}){closeDialog();const o=document.createElement('div');o.className='overlay'+(side?' side':'');o.id='ovl';o.innerHTML=`<div class="dialog ${cls}" role="dialog" aria-modal="true">${html}</div>`;o.addEventListener('pointerdown',e=>{if(e.target===o)closeDialog()});document.body.appendChild(o);setTimeout(()=>$('input:not([type=hidden]),select',o)?.focus(),60);return o}
-function closeDialog(){$('#ovl')?.remove();$('.popover')?.remove()}
+function closeDialog(){conflictOpen=false;$('#ovl')?.remove();$('.popover')?.remove()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDialog();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd()}});
 
 /* ---------- pages ---------- */
@@ -1009,7 +1120,7 @@ MOUNT.dashboard=()=>{
 };
 function drawDonut(){const el=$('#donut');if(!el)return;const byLoad=UI.donutMode==='load';donut(el,PH.slice().reverse().map(ph=>({label:ph,color:PH_COLOR[ph],value:byLoad?S.projects.filter(p=>p.phase===ph).reduce((s,p)=>s+projLoad(p.id),0)/100:S.projects.filter(p=>p.phase===ph).length})),byLoad?'beban (FTE)':'proyek',byLoad?f1:f0)}
 
-PAGES.proyek=()=>`<div class="page-head"><div><h1>Proyek</h1><p>Klik fase untuk mengubahnya, klik baris untuk detail tim</p></div><div class="actions"><button class="btn primary" data-act="newProject">${ic('plus',16)}Proyek baru</button></div></div>
+PAGES.proyek=()=>`<div class="page-head"><div><h1>Proyek</h1><p>Klik fase untuk mengubahnya, klik baris untuk detail tim</p></div><div class="actions"><button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button><button class="btn primary" data-act="newProject">${ic('plus',16)}Proyek baru</button></div></div>
   <div class="card">${table('proj',[
     {key:'id',label:'Kode',render:p=>`<span class="code">${esc(p.id)}</span>`},
     {key:'name',label:'Nama proyek',render:p=>`<div style="font-weight:600">${esc(p.name)}</div><div class="muted" style="font-size:12px">${esc(p.fac)}</div>`},
@@ -1028,7 +1139,7 @@ PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'
 MOUNT.personel=()=>animateRings();
 
 PAGES.penugasan=()=>{const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
-  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div></div>
+  return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions"><button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
   <div class="grid g-12">
     <div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>
     <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div><div class="right"><select class="in" style="width:auto" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
@@ -1068,6 +1179,15 @@ function treeTable(){let h=`<div class="tw"><table class="t tree"><thead><tr><th
       if(ok)as.forEach(a=>{const p=proj(a.p);if(!p)return;h+=`<tr class="enter"><td class="ind2"><span class="code">${esc(p.id)}</span> ${esc(p.name)}</td><td><span class="chip"><i style="background:${PH_COLOR[p.phase]}"></i>${p.phase}</span></td><td class="num">${a.alloc}%</td><td>${f1(aLoad(a))}%</td></tr>`})})});
   return h+'</tbody></table></div>'}
 
+function ghCard(){
+  if(!GHOK)return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:12px">Agar data sama di HP, iPad, dan laptop</div><div class="warnbox" style="background:var(--surface-3);color:var(--foreground)"><span>Fitur ini aktif di versi GitHub Pages. Halaman di dalam claude.ai tidak boleh menghubungi GitHub, jadi di sini data tetap disimpan lewat tombol Simpan.</span></div></div>`;
+  if(GH)return `<div class="card mt"><div class="card-head"><div><h2>Sinkronisasi GitHub</h2><div class="sub">Data dibagikan lewat file ${esc(GH.path)} di repo privat ${esc(GH.owner)}/${esc(GH.repo)} (branch ${esc(GH.branch)})</div></div><div class="right" id="ghStatus">${ghStatusHtml()}</div></div>
+    <div class="muted" style="font-size:13px;margin-bottom:14px">Perubahan dikirim otomatis beberapa detik setelah Anda berhenti mengedit. Perangkat lain memeriksa pembaruan tiap 30 detik. Token tersimpan hanya di browser perangkat ini.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="ghSync">${ic('reset',16)}Sinkronkan sekarang</button><button class="btn danger" data-act="ghOff">Putuskan</button></div></div>`;
+  return `<div class="card mt"><h2>Sinkronisasi GitHub</h2><div class="sub" style="margin-bottom:14px">Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.</div>
+    <form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Harus repo Private, terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
+    <div class="row2"><div class="field"><label>File data</label><input class="in" name="path" value="data.json"></div><div class="field"><label>Branch</label><input class="in" name="branch" value="main"></div></div>
+    <button class="btn primary" type="submit">Hubungkan</button></form></div>`}
 PAGES.pengaturan=()=>{const st=S.settings;return `<div class="page-head"><div><h1>Pengaturan</h1><p>Bobot perhitungan dan pengelolaan data</p></div></div>
   <div class="grid g2">
    <div class="card"><h2>Bobot fase</h2><div class="sub" style="margin-bottom:16px">DED > FEED > Pre-FEED > Inisiasi</div>
@@ -1080,9 +1200,10 @@ PAGES.pengaturan=()=>{const st=S.settings;return `<div class="page-head"><div><h
     <h2 class="mt">Rumus</h2><div class="formula mt">Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres)<br>Utilisasi = Σ Beban ÷ Kapasitas personel</div>
    </div>
   </div>
+  ${ghCard()}
   <div class="card mt"><h2>Data</h2><div class="sub" style="margin-bottom:14px">Ekspor ke Excel, impor dari Excel dengan format yang sama, atau kembalikan data contoh</div>
-   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format yang sama dengan file ekspor: sheet Proyek, Personel, dan Penugasan.</div></div></div></div>`};
-MOUNT.pengaturan=()=>UploadDropzone($('#upl'),{onFile:async buf=>{const r=importWorkbook(buf);render();toast(`Impor selesai: ${r}`);return 'Terimpor'}});
+   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="tpl">${ic('dl',16)}Unduh template Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format template: sheet Proyek, Personel, dan Penugasan. Hasil ekspor juga bisa diimpor kembali.</div></div></div></div>`};
+MOUNT.pengaturan=()=>UploadDropzone($('#upl'),{onFile:xlImportFile});
 
 /* ---------- project & person dialogs ---------- */
 function openProject(id){const p=proj(id);if(!p)return;const as=S.assigns.filter(a=>a.p===id);const pi=PH.indexOf(p.phase);
@@ -1138,7 +1259,7 @@ const ACT={
   cmd:openCmd,close:closeDialog,
   theme(){const t=getTheme()==='dark'?'light':'dark';try{localStorage.setItem('wl-theme',t)}catch(e){}applyTheme();if(route()==='analisis'||route()==='dashboard')render()},
   seg(b){const id=b.dataset.id,v=b.dataset.val;$$(`[data-seg="${id}"] button`).forEach(x=>x.classList.toggle('on',x===b));placePill(b.parentElement);
-    if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}},
+    if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}else if(id==='impmode'&&IMP){IMP.mode=v==='Gabung'?'merge':'replace';IMP.draw()}},
   sort(th){const id=th.dataset.t,k=th.dataset.k;const cur=UI.sort[id]||{};UI.sort[id]={key:k,dir:cur.key===k&&cur.dir==='asc'?'desc':'asc'};render()},
   lcToggle(b){UI.lcOff[b.dataset.r]=!UI.lcOff[b.dataset.r];const el=$('#lc');lineChart(el)},
   tree(b){UI.open[b.dataset.k]=!UI.open[b.dataset.k];$('#tree').innerHTML=treeTable()},
@@ -1154,26 +1275,19 @@ const ACT={
   delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn');render()},
   delProject(b){const id=b.dataset.id;confirmDlg(`Hapus proyek <b>${esc(id)}</b> beserta seluruh penugasannya?`,()=>{S.projects=S.projects.filter(p=>p.id!==id);S.assigns=S.assigns.filter(a=>a.p!==id);markDirty();toast(`Proyek ${id} dihapus`,'warn');render()})},
   delPerson(b){const id=b.dataset.id;const e=person(id);confirmDlg(`Hapus <b>${esc(e.name)}</b> beserta seluruh penugasannya?`,()=>{S.people=S.people.filter(x=>x.id!==id);S.assigns=S.assigns.filter(a=>a.e!==id);markDirty();toast(`${e.name} dihapus`,'warn');render()})},
-  async save(){if(!DIRTY){toast('Tidak ada perubahan untuk disimpan','ok');return}
+  async save(){if(GH&&GHOK){if(DIRTY||SYNC==='err')ghPush();else{await ghPull(true);if(SYNC==='ok')toast('Sudah tersinkron')}return}
+    if(!DIRTY){toast('Tidak ada perubahan untuk disimpan','ok');return}
     if(!ART){if(!window.claude){DIRTY=false;updateSave();toast('Tersimpan di browser ini');return}toast('Penyimpanan permanen tidak tersedia di tampilan ini. Perubahan disimpan sebagai draf di browser.','warn');return}
     const b=$('#saveBtn');b.querySelector('.lbl').textContent='Menyimpan…';
     try{await ART.publish(buildDoc(S));try{localStorage.removeItem('wl-draft')}catch(e){}DIRTY=false;updateSave();toast('Perubahan tersimpan')}
     catch(err){const c=err&&err.code;if(c==='conflict'){toast('Data diperbarui oleh orang lain, halaman dimuat ulang','warn')}else if(c==='not_granted'||c==='not_writer'){toast('Anda hanya punya akses baca. Perubahan tetap sebagai draf.','warn')}else toast('Gagal menyimpan: '+(err&&err.message||c||'tidak diketahui'),'err');updateSave()}},
-  async export(){if(!window.XLSX){toast('Library Excel belum termuat','err');return}
-    const wb=XLSX.utils.book_new();const add=(n,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),n);
-    add('Utilisasi',S.people.map(e=>{const u=util(e.id);return {'Personel':e.name,'Disiplin':e.role,'Kapasitas (%)':e.cap,'Total alokasi (%)':S.assigns.filter(a=>a.e===e.id).reduce((s,a)=>s+a.alloc,0),'Utilisasi (%)':+u.toFixed(1),'Status':ST_LABEL[status(u)]}}));
-    add('Disiplin',ROLES.map(r=>({'Disiplin':r,'Utilisasi (%)':+roleUtil(r).toFixed(1),...Object.fromEntries(PH.map(ph=>[ph+' (%)',+(S.assigns.filter(a=>person(a.e)?.role===r&&proj(a.p)?.phase===ph).reduce((s,a)=>s+aLoad(a),0)*100/(S.people.filter(e=>e.role===r).reduce((s,e)=>s+(e.cap||100),0)||100)).toFixed(1)]))})));
-    add('Proyek',S.projects.map(p=>({'ID':p.id,'Nama':p.name,'Fasilitas':p.fac,'Fase':p.phase,'Kompleksitas':p.cx,'Mulai':p.start,'Selesai':p.end,'Progres (%)':p.progress,'Beban (FTE)':+(projLoad(p.id)/100).toFixed(2)})));
-    add('Personel',S.people.map(e=>({'ID':e.id,'Nama':e.name,'Disiplin':e.role,'Kapasitas (%)':e.cap})));
-    add('Penugasan',S.assigns.map(a=>({'ID':a.id,'Proyek':a.p,'Personel':a.e,'Nama personel':person(a.e)?.name||'','Alokasi (%)':a.alloc,'Beban (%)':+aLoad(a).toFixed(1)})));
-    add('Bobot Fase',PH.map(ph=>({'Fase':ph,'Bobot':S.settings.phaseW[ph]})));
-    add('Faktor Peran',ROLES.map(r=>({'Disiplin':r,...Object.fromEntries(PH.map(ph=>[ph,(S.settings.roleF[r]||{})[ph]??1]))})));
-    add('Kompleksitas',[1,2,3].map(c=>({'Level':c,'Label':CX_LABEL[c],'Faktor':S.settings.cxF[c]})));
-    const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});const name=`workload-analysis-${new Date().toISOString().slice(0,10)}.xlsx`;
-    if(!DL){if(window.claude){toast('Unduhan tidak tersedia di tampilan ini. Gunakan Salin ringkasan.','warn');return}const u=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('File Excel diunduh');return}
-    try{await DL.save({filename:name,data:new Blob([buf])});toast('File Excel siap diunduh')}catch(err){if(err&&err.code!=='declined')toast('Ekspor gagal: '+(err.message||err.code),'err')}},
+  async export(){if(!window.ExcelJS){toast('Library Excel belum termuat','err');return}try{await xlDownload(await xlBook('data'),`workload-analysis-${new Date().toISOString().slice(0,10)}.xlsx`)}catch(err){toast('Ekspor gagal: '+(err.message||err),'err')}},
+  async tpl(){if(!window.ExcelJS){toast('Library Excel belum termuat','err');return}try{await xlDownload(await xlBook('template'),'Template-Workload.xlsx')}catch(err){toast('Gagal membuat template: '+(err.message||err),'err')}},
+  imp:openImportDialog,
   async copyCsv(){const rows=[['Personel','Disiplin','Utilisasi (%)','Status'],...S.people.map(e=>{const u=util(e.id);return [e.name,e.role,u.toFixed(1),ST_LABEL[status(u)]]})];const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     try{await navigator.clipboard.writeText(csv);toast('Ringkasan CSV disalin ke clipboard')}catch(e){toast('Clipboard tidak diizinkan di tampilan ini','err')}},
+  ghSync(){if(DIRTY)ghPush();else ghPull(true)},
+  ghOff(){ghDisconnect();render();toast('Sinkronisasi diputus. Data tetap ada di perangkat ini.','warn')},
   reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan dikembalikan ke data contoh.</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Reset</button></div>`);$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
 };
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
@@ -1193,15 +1307,264 @@ document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;
   if(k==='aFilter'){UI.aFilter=t.value;render()}
   if(k==='alloc'){render()}
 });
-function importWorkbook(buf){if(!window.XLSX)throw new Error('Library Excel belum termuat');const wb=XLSX.read(buf);const sh=n=>wb.Sheets[n]?XLSX.utils.sheet_to_json(wb.Sheets[n]):null;
-    const P=sh('Proyek'),E=sh('Personel'),A=sh('Penugasan');if(!P||!E||!A)throw new Error('Butuh sheet Proyek, Personel, Penugasan');
-    const toISO=v=>typeof v==='number'?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):String(v||'').slice(0,10);
-    const projects=P.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),fac:String(r['Fasilitas']||''),phase:PH.includes(r['Fase'])?r['Fase']:'FEED',cx:clamp(+r['Kompleksitas']||2,1,3),start:toISO(r['Mulai']),end:toISO(r['Selesai']),progress:clamp(+r['Progres (%)']||0,0,100)}));
-    const people=E.map(r=>({id:String(r['ID']),name:String(r['Nama']||''),role:ROLES.includes(r['Disiplin'])?r['Disiplin']:'Civil/Structure',cap:clamp(+r['Kapasitas (%)']||100,10,100)}));
-    const assigns=A.map(r=>({id:String(r['ID']||uid('a')),p:String(r['Proyek']),e:String(r['Personel']),alloc:clamp(+r['Alokasi (%)']||0,0,100)})).filter(a=>projects.some(p=>p.id===a.p)&&people.some(x=>x.id===a.e));
-    const BW=sh('Bobot Fase');if(BW)BW.forEach(r=>{if(PH.includes(r['Fase']))S.settings.phaseW[r['Fase']]=+r['Bobot']});
-    const RF=sh('Faktor Peran');if(RF)RF.forEach(r=>{if(ROLES.includes(r['Disiplin']))PH.forEach(ph=>{if(r[ph]!=null)S.settings.roleF[r['Disiplin']][ph]=+r[ph]})});
-    Object.assign(S,{projects,people,assigns});markDirty();return `${projects.length} proyek, ${people.length} personel, ${assigns.length} penugasan`}
+/* ---------- Excel: template, export, import ----------
+   One format for all three: the template, the export and what the
+   importer reads are the same workbook. Sheets and columns are found
+   by their titles, not their position, and rows are matched by project
+   CODE and person NAME, not by an internal id, so a hand-made sheet
+   works as long as the titles are right. Nothing is applied until the
+   preview has been read and confirmed. */
+const norm=t=>String(t??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+const XL_SYN={
+  proyek:{code:['kode','kodeproyek','id','idproyek','projectcode','code'],name:['namaproyek','nama','proyek','project','projectname'],fac:['fasilitas','facility','lokasi'],phase:['fase','phase','tahap'],cx:['kompleksitas','complexity','tingkat'],start:['mulai','tanggalmulai','start','startdate'],end:['selesai','tanggalselesai','end','enddate','finish'],prog:['progres','progress']},
+  personel:{name:['nama','namapersonel','personel','name','pegawai'],role:['disiplin','discipline','peran','role'],cap:['kapasitas','capacity']},
+  penugasan:{code:['kodeproyek','kode','proyek','project','idproyek'],person:['namapersonel','personel','nama','name','pegawai'],alloc:['alokasi','allocation','persen'],role:['disiplin','discipline','peran']}
+};
+const XL_SHEET={proyek:['proyek','projects','project'],personel:['personel','people','pegawai','tim'],penugasan:['penugasan','assignments','alokasi'],bobot:['bobotfase','bobot','phaseweights'],peran:['faktorperan','roles'],kx:['kompleksitas','complexity']};
+/* a cell's value, whatever Excel kept it as: text, number, date, formula, rich text */
+const cv=v=>{if(v==null)return '';if(v instanceof Date)return v;if(typeof v==='object'){if('result' in v)return cv(v.result);if(v.richText)return v.richText.map(t=>t.text).join('');if('text' in v)return cv(v.text);if(v.error)return ''}return typeof v==='string'?v.trim():v};
+const toNum=v=>{if(typeof v==='number')return v;const s=String(v??'').replace('%','').replace(',','.').trim();if(s==='')return null;const n=Number(s);return isNaN(n)?NaN:n};
+const toPhase=v=>{const k=norm(v);if(!k)return null;if(/^(ini|init)/.test(k))return 'Inisiasi';if(/^(pre|pra)/.test(k)||k==='feedpre')return 'Pre-FEED';if(k==='feed')return 'FEED';if(/^(ded|detail)/.test(k))return 'DED';return undefined};
+const toCx=v=>{const k=norm(v);if(!k)return null;if(['1','rendah','low','r','l'].includes(k))return 1;if(['2','sedang','medium','med','s','m'].includes(k))return 2;if(['3','tinggi','high','t','h'].includes(k))return 3;return undefined};
+const toRole=v=>{const k=norm(v);if(!k)return null;if(/lead|^pm$|projectmanager|koordinator/.test(k))return 'Lead Project';if(/process|proses/.test(k))return 'Process';if(/mech|static|rotating|mekanik/.test(k))return 'Mechanical';if(/pip/.test(k))return 'Piping';if(/civil|struct|sipil/.test(k))return 'Civil/Structure';if(/elec|listrik/.test(k))return 'Electrical';if(/instr|control|kontrol/.test(k))return 'Instrument';if(/doccon|documentcontrol|dokumen|^dc$/.test(k))return 'DocCon';return undefined};
+const MON={jan:1,januari:1,january:1,feb:2,februari:2,february:2,mar:3,maret:3,march:3,apr:4,april:4,mei:5,may:5,jun:6,juni:6,june:6,jul:7,juli:7,july:7,agu:8,agt:8,agustus:8,aug:8,august:8,sep:9,sept:9,september:9,okt:10,oktober:10,oct:10,october:10,nov:11,november:11,des:12,desember:12,dec:12,december:12};
+const iso=(y,m,d)=>{if(y<100)y+=2000;const t=new Date(Date.UTC(y,m-1,d));return t.getUTCFullYear()===y&&t.getUTCMonth()===m-1&&t.getUTCDate()===d?`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`:undefined};
+/* null = blank, undefined = not a date */
+function toDate(v){
+  if(v===''||v==null)return null;
+  if(v instanceof Date)return isNaN(v)?undefined:v.toISOString().slice(0,10);
+  if(typeof v==='number')return v>20000&&v<80000?new Date(Math.round((v-25569)*864e5)).toISOString().slice(0,10):undefined;
+  const s=String(v).trim();let m;
+  if(m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/))return iso(+m[1],+m[2],+m[3]);
+  /* day first: this is an Indonesian workbook */
+  if(m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/))return iso(+m[3],+m[2],+m[1]);
+  if(m=s.match(/^(\d{1,2})[\s-]+([A-Za-z]+)\.?[\s-]+(\d{2,4})/)){const mo=MON[m[2].toLowerCase()];return mo?iso(+m[3],mo,+m[1]):undefined}
+  return undefined}
+const slug=t=>String(t??'').trim().replace(/\s+/g,' ').toLowerCase();
+
+/* ── reading ────────────────────────────────────────────── */
+function xlReadSheet(ws,syn,issues,label){
+  /* the title row is the first of the top ten that has two known titles */
+  let hr=0,cols={};
+  for(let n=1;n<=Math.min(10,ws.rowCount)&&!hr;n++){
+    const c={};ws.getRow(n).eachCell({includeEmpty:false},(cell,ci)=>{const h=norm(cv(cell.value));if(!h)return;for(const [k,list] of Object.entries(syn)){if(c[k])continue;if(list.includes(h)||list.some(s=>s.length>=5&&h.startsWith(s))){c[k]=ci;break}}});
+    if(Object.keys(c).length>=2){hr=n;cols=c}}
+  if(!hr){issues.push({lvl:'err',sheet:label,row:0,msg:'Judul kolom tidak dikenali. Pakai judul dari template.'});return null}
+  const rows=[];
+  for(let n=hr+1;n<=ws.rowCount;n++){
+    const row=ws.getRow(n);const v={};let any=false;
+    for(const [k,ci] of Object.entries(cols)){const x=cv(row.getCell(ci).value);v[k]=x;if(x!=='')any=true}
+    if(any)rows.push({n,v})}
+  return {rows,cols}}
+async function xlParse(buf){
+  if(!window.ExcelJS)throw new Error('Library Excel belum termuat. Periksa koneksi internet.');
+  const wb=new ExcelJS.Workbook();
+  try{await wb.xlsx.load(buf)}catch(e){throw new Error('File ini bukan workbook Excel (.xlsx) yang valid')}
+  const find=k=>wb.worksheets.find(w=>XL_SHEET[k].includes(norm(w.name)));
+  const issues=[],P={issues,sheets:[]};
+  const sp=find('proyek'),se=find('personel'),sa=find('penugasan');
+  if(!sp&&!se&&!sa)throw new Error('Tidak ada sheet Proyek, Personel, atau Penugasan. Pakai template.');
+  if(sp){P.sheets.push('Proyek');P.proyek=xlReadSheet(sp,XL_SYN.proyek,issues,'Proyek')}
+  if(se){P.sheets.push('Personel');P.personel=xlReadSheet(se,XL_SYN.personel,issues,'Personel')}
+  if(sa){P.sheets.push('Penugasan');P.penugasan=xlReadSheet(sa,XL_SYN.penugasan,issues,'Penugasan')}
+  /* the weights, if the workbook carries them */
+  const patch={phaseW:{},roleF:{},cxF:{}};let n=0;
+  const sb=find('bobot'),sr=find('peran'),sk=find('kx');
+  if(sb){P.sheets.push('Bobot Fase');const r=xlReadSheet(sb,{ph:['fase','phase'],w:['bobot','weight']},issues,'Bobot Fase');r&&r.rows.forEach(({n:rn,v})=>{const ph=toPhase(v.ph),w=toNum(v.w);if(!ph||w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Bobot Fase',row:rn,msg:`Baris tidak valid: fase "${v.ph}" bobot "${v.w}"`});else{patch.phaseW[ph]=w;n++}})}
+  if(sr){P.sheets.push('Faktor Peran');const syn={role:['disiplin','discipline','peran']};PH.forEach(ph=>syn[ph]=[norm(ph)]);const r=xlReadSheet(sr,syn,issues,'Faktor Peran');r&&r.rows.forEach(({n:rn,v})=>{const ro=toRole(v.role);if(!ro){issues.push({lvl:'err',sheet:'Faktor Peran',row:rn,msg:`Disiplin "${v.role}" tidak dikenal`});return}PH.forEach(ph=>{if(v[ph]===''||v[ph]==null)return;const w=toNum(v[ph]);if(w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Faktor Peran',row:rn,msg:`Nilai ${ph} "${v[ph]}" tidak valid`});else{(patch.roleF[ro]=patch.roleF[ro]||{})[ph]=w;n++}})})}
+  if(sk){P.sheets.push('Kompleksitas');const r=xlReadSheet(sk,{lv:['level','kompleksitas','tingkat'],f:['faktor','factor']},issues,'Kompleksitas');r&&r.rows.forEach(({n:rn,v})=>{const c=toCx(v.lv),w=toNum(v.f);if(!c||w==null||isNaN(w)||w<0)issues.push({lvl:'err',sheet:'Kompleksitas',row:rn,msg:`Baris tidak valid: "${v.lv}" faktor "${v.f}"`});else{patch.cxF[c]=w;n++}})}
+  P.patch=n?patch:null;
+  return P}
+
+/* ── planning: what the file would do, without doing it ── */
+function xlPlan(P,mode){
+  const issues=[...P.issues],today=new Date().toISOString().slice(0,10),stat={pNew:0,pUpd:0,eNew:0,eUpd:0,aNew:0,aUpd:0,skip:0,orphan:0,set:0};
+  const err=(sheet,row,msg)=>{issues.push({lvl:'err',sheet,row,msg});stat.skip++},warn=(sheet,row,msg)=>issues.push({lvl:'warn',sheet,row,msg});
+  const keep=(has,list)=>mode==='replace'&&has?[]:list.map(x=>({...x}));
+  const R={projects:keep(!!P.proyek,S.projects),people:keep(!!P.personel,S.people),assigns:keep(!!P.penugasan,S.assigns),settings:JSON.parse(JSON.stringify(S.settings))};
+  const byCode=new Map(R.projects.map(p=>[slug(p.id),p])),byName=new Map(R.people.map(e=>[slug(e.name),e]));
+  const seenP=new Set(),seenE=new Set(),seenA=new Set();
+
+  (P.proyek?.rows||[]).forEach(({n,v})=>{
+    const code=String(v.code??'').trim(),name=String(v.name??'').trim();
+    if(!code)return err('Proyek',n,'Kode proyek kosong');
+    if(seenP.has(slug(code)))warn('Proyek',n,`Kode ${code} muncul dua kali, baris ini memperbarui yang sebelumnya`);seenP.add(slug(code));
+    const ph=toPhase(v.phase),cx=toCx(v.cx),st=toDate(v.start),en=toDate(v.end),pr=toNum(v.prog);
+    if(ph===undefined)return err('Proyek',n,`Fase "${v.phase}" tidak dikenal. Pilih Inisiasi, Pre-FEED, FEED, atau DED`);
+    if(cx===undefined)return err('Proyek',n,`Kompleksitas "${v.cx}" tidak dikenal. Pilih Rendah, Sedang, atau Tinggi`);
+    if(st===undefined)return err('Proyek',n,`Tanggal mulai "${v.start}" tidak terbaca. Tulis seperti 15/01/2027`);
+    if(en===undefined)return err('Proyek',n,`Tanggal selesai "${v.end}" tidak terbaca. Tulis seperti 15/01/2027`);
+    if(pr!==null&&(isNaN(pr)||pr<0||pr>100))return err('Proyek',n,`Progres "${v.prog}" harus 0 sampai 100`);
+    const ex=byCode.get(slug(code));
+    if(ex){
+      const c={};if(name)c.name=name;if(String(v.fac??'').trim())c.fac=String(v.fac).trim();if(ph)c.phase=ph;if(cx)c.cx=cx;if(st)c.start=st;if(en)c.end=en;if(pr!==null)c.progress=pr;
+      const m={...ex,...c};if(m.end<m.start)return err('Proyek',n,`Selesai (${m.end}) lebih awal dari mulai (${m.start})`);
+      if(Object.keys(c).some(k=>ex[k]!==c[k])){Object.assign(ex,c);stat.pUpd++}
+    }else{
+      if(!name)return err('Proyek',n,`Proyek baru ${code} butuh Nama Proyek`);
+      if(!ph)return err('Proyek',n,`Proyek baru ${code} butuh Fase`);
+      let s=st,e=en;if(!s||!e){warn('Proyek',n,`${code}: tanggal kosong, diisi otomatis. Ubah nanti bila perlu`);s=s||today;e=e||new Date(Date.parse(s)+180*864e5).toISOString().slice(0,10)}
+      if(e<s)return err('Proyek',n,`Selesai (${e}) lebih awal dari mulai (${s})`);
+      const p={id:code,name,fac:String(v.fac??'').trim(),phase:ph,cx:cx||2,start:s,end:e,progress:pr??0};
+      R.projects.push(p);byCode.set(slug(code),p);stat.pNew++}
+  });
+
+  (P.personel?.rows||[]).forEach(({n,v})=>{
+    const name=String(v.name??'').trim().replace(/\s+/g,' ');if(!name)return err('Personel',n,'Nama kosong');
+    if(seenE.has(slug(name)))warn('Personel',n,`${name} muncul dua kali, baris ini memperbarui yang sebelumnya`);seenE.add(slug(name));
+    const ro=toRole(v.role),cap=toNum(v.cap);
+    if(ro===undefined)return err('Personel',n,`Disiplin "${v.role}" tidak dikenal untuk ${name}`);
+    if(cap!==null&&(isNaN(cap)||cap<10||cap>100))return err('Personel',n,`Kapasitas ${name} harus 10 sampai 100`);
+    const ex=byName.get(slug(name));
+    if(ex){const c={};if(ro)c.role=ro;if(cap!==null)c.cap=cap;if(Object.keys(c).some(k=>ex[k]!==c[k])){Object.assign(ex,c);stat.eUpd++}}
+    else{if(!ro)return err('Personel',n,`Personel baru ${name} butuh Disiplin`);const e={id:uid('e'),name,role:ro,cap:cap??100};R.people.push(e);byName.set(slug(name),e);stat.eNew++}
+  });
+
+  (P.penugasan?.rows||[]).forEach(({n,v})=>{
+    const code=String(v.code??'').trim(),pn=String(v.person??'').trim().replace(/\s+/g,' ');
+    if(!code||!pn)return err('Penugasan',n,'Kode Proyek dan Nama Personel wajib diisi');
+    const pj=byCode.get(slug(code))||R.projects.find(p=>slug(p.name)===slug(code));
+    if(!pj)return err('Penugasan',n,`Proyek "${code}" tidak ada. Isi dulu di sheet Proyek`);
+    const al=toNum(v.alloc);
+    if(al===null||isNaN(al)||al<0||al>100)return err('Penugasan',n,`Alokasi "${v.alloc}" harus 0 sampai 100`);
+    let e=byName.get(slug(pn))||R.people.find(x=>x.id===pn);
+    if(!e){
+      const ro=toRole(v.role);
+      if(!ro)return err('Penugasan',n,`Personel "${pn}" tidak ada. Tambahkan di sheet Personel, atau isi kolom Disiplin agar dibuat otomatis`);
+      e={id:uid('e'),name:pn,role:ro,cap:100};R.people.push(e);byName.set(slug(pn),e);stat.eNew++;warn('Penugasan',n,`${pn} dibuat otomatis sebagai ${ro} dengan kapasitas 100%`)}
+    const key=pj.id+'|'+e.id;if(seenA.has(key))warn('Penugasan',n,`${e.name} di ${pj.id} muncul dua kali, memakai yang terakhir`);seenA.add(key);
+    const ex=R.assigns.find(a=>a.p===pj.id&&a.e===e.id);
+    if(ex){if(ex.alloc!==al){ex.alloc=al;stat.aUpd++}}else{R.assigns.push({id:uid('a'),p:pj.id,e:e.id,alloc:al});stat.aNew++}
+  });
+
+  /* nothing may point at a project or person that is gone */
+  const ids={p:new Set(R.projects.map(p=>p.id)),e:new Set(R.people.map(e=>e.id))};
+  const before=R.assigns.length;R.assigns=R.assigns.filter(a=>ids.p.has(a.p)&&ids.e.has(a.e));stat.orphan=before-R.assigns.length;
+
+  if(P.patch){const s=R.settings,pt=P.patch;
+    PH.forEach(ph=>{if(pt.phaseW[ph]!==undefined&&s.phaseW[ph]!==pt.phaseW[ph]){s.phaseW[ph]=pt.phaseW[ph];stat.set++}});
+    Object.entries(pt.roleF).forEach(([r,o])=>Object.entries(o).forEach(([ph,w])=>{s.roleF[r]=s.roleF[r]||{};if(s.roleF[r][ph]!==w){s.roleF[r][ph]=w;stat.set++}}));
+    Object.entries(pt.cxF).forEach(([c,w])=>{if(s.cxF[c]!==w){s.cxF[c]=w;stat.set++}})}
+  /* how it would look: swap in, count, swap back, all in one tick */
+  const old={projects:S.projects,people:S.people,assigns:S.assigns,settings:S.settings};
+  let over=0;Object.assign(S,R);try{over=S.people.filter(e=>util(e.id)>S.settings.thr.high).length}finally{Object.assign(S,old)}
+  const changes=stat.pNew+stat.pUpd+stat.eNew+stat.eUpd+stat.aNew+stat.aUpd+stat.set+stat.orphan+(mode==='replace'?Math.abs(R.projects.length-S.projects.length)+Math.abs(R.people.length-S.people.length)+Math.abs(R.assigns.length-S.assigns.length):0);
+  return {R,issues,stat,over,changes}}
+
+/* ── the preview ────────────────────────────────────────── */
+let IMP=null;
+function xlPreview(P,fname){
+  IMP={mode:'merge'};
+  openDialog(`<div class="dh"><div><h3>Tinjau impor</h3><div class="muted" style="font-size:13px">${esc(fname)} · sheet terbaca: ${esc(P.sheets.join(', '))}</div></div><button class="btn subtle icon-btn x" data-act="close" aria-label="Tutup">${ic('x')}</button></div>
+    <div style="margin-bottom:8px">${seg('impmode',['Gabung','Ganti semua'],'Gabung')}</div><div class="muted" id="impDesc" style="font-size:13px;margin-bottom:14px"></div><div id="impBody"></div>
+    <div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="impOk">Terapkan</button></div>`,{cls:'imp'});
+  IMP.draw=()=>{
+    const pl=IMP.plan=xlPlan(P,IMP.mode),s=pl.stat;
+    $('#impDesc').textContent=IMP.mode==='merge'?'Proyek dicocokkan lewat kode, personel lewat nama. Yang sudah ada diperbarui, yang baru ditambahkan, yang tidak ada di file dibiarkan.':'Data pada sheet yang ada di file diganti seluruhnya oleh isi file. Data di sheet yang tidak ada di file tetap.';
+    const box=(t,n,u)=>`<div class="card" style="box-shadow:none;border:1px solid var(--border);padding:12px"><div class="muted" style="font-size:12px">${t}</div><div style="font-size:20px;font-weight:600;line-height:28px">${n}<span class="muted" style="font-size:12px;font-weight:400"> baru</span></div><div class="muted" style="font-size:12px">${u} diperbarui</div></div>`;
+    const shown=pl.issues.slice(0,12);
+    const errs=pl.issues.filter(i=>i.lvl==='err').length,warns=pl.issues.length-errs;
+    $('#impBody').innerHTML=`<div class="grid g3" style="gap:10px">${box('Proyek',s.pNew,s.pUpd)}${box('Personel',s.eNew,s.eUpd)}${box('Penugasan',s.aNew,s.aUpd)}</div>
+      <div class="muted" style="font-size:12px;margin:10px 0">${[s.set?`${s.set} bobot diperbarui`:'',s.orphan?`${s.orphan} penugasan dibuang karena proyek atau personelnya tidak ada`:'',`Setelah impor: ${pl.over} personel overload`].filter(Boolean).join(' · ')}</div>
+      ${pl.issues.length?`<div style="font-weight:600;margin:6px 0">${errs?`${errs} baris dilewati`:''}${errs&&warns?' · ':''}${warns?`${warns} catatan`:''}</div><div style="max-height:190px;overflow:auto;display:flex;flex-direction:column;gap:4px">${shown.map(i=>`<div class="warnbox" style="margin:0;${i.lvl==='warn'?'background:var(--warning-soft);color:var(--warning)':''}">${ic('warn',16)}<span><b>${esc(i.sheet)}${i.row?` baris ${i.row}`:''}</b>: ${esc(i.msg)}</span></div>`).join('')}${pl.issues.length>12?`<div class="muted" style="font-size:12px">dan ${pl.issues.length-12} lainnya</div>`:''}</div>`:'<div class="warnbox okbox" style="margin:0">Semua baris terbaca dengan benar.</div>'}`;
+    const ok=$('#impOk');ok.disabled=!pl.changes;ok.textContent=pl.changes?'Terapkan':'Tidak ada perubahan';ok.style.opacity=pl.changes?'':'.5';
+    initSegs()};
+  $('#impOk').onclick=()=>{const pl=IMP.plan;if(!pl.changes)return;const keepOld={projects:S.projects};
+    S.projects=pl.R.projects;S.people=pl.R.people;S.assigns=pl.R.assigns;S.settings=pl.R.settings;
+    markDirty();closeDialog();IMP=null;render();
+    const s=pl.stat;toast(`Impor selesai: ${s.pNew} proyek baru, ${s.eNew} personel baru, ${s.aNew+s.aUpd} penugasan`)};
+  IMP.draw()}
+async function xlImportFile(buf,f){const P=await xlParse(buf);xlPreview(P,f.name);return 'Siap ditinjau'}
+function openImportDialog(){
+  openDialog(`<div class="dh"><div><h3>Impor dari Excel</h3><div class="muted" style="font-size:13px">Tarik file .xlsx ke kotak. Anda bisa meninjau hasilnya sebelum data berubah.</div></div><button class="btn subtle icon-btn x" data-act="close" aria-label="Tutup">${ic('x')}</button></div>
+    <div id="impUpl" style="display:grid;justify-items:center;margin:8px 0 4px"></div>
+    <div class="foot" style="justify-content:space-between"><button class="btn" data-act="tpl">${ic('dl',16)}Unduh template</button><button class="btn" data-act="close">Tutup</button></div>`);
+  UploadDropzone($('#impUpl'),{onFile:xlImportFile})}
+
+/* ── writing: the template and the export ───────────────── */
+const xlDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(Date.UTC(y,m-1,d))};
+async function xlBook(kind){
+  const wb=new ExcelJS.Workbook();wb.creator='Workload by YMD';wb.created=new Date();
+  const HEAD=(ws,fill='FF0F6CBD')=>{const r=ws.getRow(1);r.height=24;r.eachCell(c=>{c.font={bold:true,color:{argb:'FFFFFFFF'},name:'Segoe UI',size:11};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:fill}};c.alignment={vertical:'middle'}})};
+  const sheet=(name,cols,rows,fill)=>{const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:1}]});ws.columns=cols.map(c=>({header:c[0],key:c[0],width:c[1]}));rows.forEach(r=>ws.addRow(r));HEAD(ws,fill);ws.eachRow((r,n)=>{if(n>1)r.font={name:'Segoe UI',size:11}});return ws};
+  const dv=(ws,col,def,to=500)=>{for(let r=2;r<=to;r++)ws.getCell(r,col).dataValidation={allowBlank:true,showErrorMessage:true,errorStyle:'stop',...def}};
+  const LIST=a=>({type:'list',formulae:[`"${a.join(',')}"`],errorTitle:'Pilih dari daftar',error:'Nilai harus salah satu dari daftar.'});
+  const WHOLE=(a,b)=>({type:'whole',operator:'between',formulae:[a,b],errorTitle:'Angka tidak valid',error:`Isi angka bulat ${a} sampai ${b}.`});
+  const data=kind==='data';
+
+  if(!data){
+    const ws=wb.addWorksheet('Petunjuk',{views:[{showGridLines:false}]});ws.columns=[{width:30},{width:96}];
+    const L=(a,b,o={})=>{const r=ws.addRow([a,b]);r.eachCell(c=>{c.font={name:'Segoe UI',size:11,...(o.bold?{bold:true}:{})};c.alignment={vertical:'top',wrapText:true}});if(o.head)r.eachCell(c=>{c.font={name:'Segoe UI',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F6CBD'}}});return r};
+    const T=ws.addRow(['Template impor Workload by YMD']);T.getCell(1).font={name:'Segoe UI',size:18,bold:true,color:{argb:'FF0F6CBD'}};T.height=30;ws.addRow([]);
+    L('CARA PAKAI','',{head:1});
+    L('1','Isi sheet Proyek, Personel, dan Penugasan mulai dari baris 2. Jangan mengubah judul kolom di baris 1.');
+    L('2','Kolom Fase, Kompleksitas, dan Disiplin punya dropdown: pilih dari daftar. Di sheet Penugasan, Kode Proyek dan Nama Personel juga dropdown yang diambil dari dua sheet tadi.');
+    L('3','Simpan file. Di aplikasi: Pengaturan → Impor Excel, atau tombol Impor Excel di halaman Proyek atau Penugasan, lalu tarik file ke kotaknya.');
+    L('4','Aplikasi menampilkan pratinjau berisi jumlah data baru, data yang diperbarui, dan baris bermasalah. Periksa, lalu klik Terapkan. Sebelum itu tidak ada data yang berubah.');
+    ws.addRow([]);L('MODE IMPOR','',{head:1});
+    L('Gabung','Proyek dicocokkan lewat Kode Proyek, personel lewat Nama. Yang sudah ada diperbarui, yang baru ditambahkan, yang tidak ada di file dibiarkan. Kolom yang dikosongkan tidak mengubah data lama.');
+    L('Ganti semua','Isi sheet yang ada di file menggantikan seluruh data sejenis di aplikasi. Pakai ini untuk menyamakan aplikasi dengan Excel.');
+    ws.addRow([]);L('KOLOM','',{head:1});
+    L('Sheet Proyek','',{bold:1});
+    L('Kode Proyek','Wajib. Unik, contoh P-01. Dipakai untuk mencocokkan proyek.');
+    L('Nama Proyek','Wajib untuk proyek baru.');
+    L('Fasilitas','Opsional.');
+    L('Fase','Inisiasi, Pre-FEED, FEED, atau DED. Wajib untuk proyek baru.');
+    L('Kompleksitas','Rendah, Sedang, atau Tinggi. Kosong dianggap Sedang.');
+    L('Mulai, Selesai','Tanggal, contoh 15/01/2027. Kosong diisi otomatis (hari ini sampai 6 bulan).');
+    L('Progres (%)','Angka 0 sampai 100. Kosong dianggap 0.');
+    L('Sheet Personel','',{bold:1});
+    L('Nama','Wajib. Dipakai untuk mencocokkan personel, jadi tulis konsisten.');
+    L('Disiplin','Lead Project, Process, Mechanical, Piping, Civil/Structure, Electrical, Instrument, atau DocCon. Wajib untuk personel baru.');
+    L('Kapasitas (%)','10 sampai 100. Kosong dianggap 100. Isi 50 untuk personel paruh waktu.');
+    L('Sheet Penugasan','',{bold:1});
+    L('Kode Proyek','Wajib. Harus ada di sheet Proyek (atau sudah ada di aplikasi).');
+    L('Nama Personel','Wajib. Harus ada di sheet Personel (atau sudah ada di aplikasi).');
+    L('Alokasi (%)','Wajib. Porsi waktu personel di proyek itu, 0 sampai 100.');
+    L('Disiplin (opsional)','Isi hanya jika personel belum ada di mana pun. Aplikasi membuatnya otomatis dengan kapasitas 100%.');
+    ws.addRow([]);L('SHEET OPSIONAL','',{head:1});
+    L('Bobot Fase, Faktor Peran, Kompleksitas','Berisi bobot perhitungan beban. Jika ada, bobot di aplikasi ikut diperbarui. Hapus sheet ini kalau Anda tidak ingin mengubah bobot.');
+    ws.addRow([]);L('CONTOH ISI','',{head:1});
+    L('Proyek','P-11 | Pipeline Replacement | Duri | FEED | Sedang | 01/02/2027 | 30/06/2027 | 0');
+    L('Personel','Budi Santoso | Process | 100');
+    L('Penugasan','P-11 | Budi Santoso | 40');
+    ws.addRow([]);L('RUMUS BEBAN','',{head:1});
+    L('','Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres). Utilisasi = jumlah beban ÷ kapasitas. Di bawah 70% Tersedia, 70 sampai 100% Optimal, di atas 100% Overload.');
+  }
+
+  const P=sheet('Proyek',[['Kode Proyek',14],['Nama Proyek',40],['Fasilitas',20],['Fase',14],['Kompleksitas',15],['Mulai',13],['Selesai',13],['Progres (%)',13]],
+    data?S.projects.map(p=>[p.id,p.name,p.fac,p.phase,CX_LABEL[p.cx],xlDate(p.start),xlDate(p.end),p.progress]):[]);
+  P.getColumn(6).numFmt='dd/mm/yyyy';P.getColumn(7).numFmt='dd/mm/yyyy';
+  dv(P,4,LIST(PH.slice().reverse().reverse()));dv(P,5,LIST(['Rendah','Sedang','Tinggi']));
+  dv(P,6,{type:'date',operator:'greaterThan',formulae:[new Date(Date.UTC(2000,0,1))],errorTitle:'Tanggal',error:'Tulis tanggal, contoh 15/01/2027.'});
+  dv(P,7,{type:'date',operator:'greaterThan',formulae:[new Date(Date.UTC(2000,0,1))],errorTitle:'Tanggal',error:'Tulis tanggal, contoh 15/01/2027.'});
+  dv(P,8,WHOLE(0,100));
+
+  const E=sheet('Personel',[['Nama',28],['Disiplin',20],['Kapasitas (%)',15]],data?S.people.map(e=>[e.name,e.role,e.cap]):[]);
+  dv(E,2,LIST(ROLES));dv(E,3,WHOLE(10,100));
+
+  const A=sheet('Penugasan',[['Kode Proyek',14],['Nama Personel',28],['Alokasi (%)',14],['Disiplin (opsional)',22]],
+    data?S.assigns.map(a=>{const e=person(a.e),p=proj(a.p);return e&&p?[p.id,e.name,a.alloc,e.role]:null}).filter(Boolean):[]);
+  dv(A,1,{type:'list',formulae:['Proyek!$A$2:$A$500'],errorStyle:'warning',errorTitle:'Kode tidak ada di sheet Proyek',error:'Kode ini belum ada di sheet Proyek. Tetap pakai?'});
+  dv(A,2,{type:'list',formulae:['Personel!$A$2:$A$500'],errorStyle:'warning',errorTitle:'Nama tidak ada di sheet Personel',error:'Nama ini belum ada di sheet Personel. Isi kolom Disiplin agar dibuat otomatis. Tetap pakai?'});
+  dv(A,3,WHOLE(0,100));dv(A,4,LIST(ROLES));
+
+  sheet('Bobot Fase',[['Fase',16],['Bobot',12]],PH.slice().reverse().map(ph=>[ph,S.settings.phaseW[ph]]),'FF616161');
+  sheet('Faktor Peran',[['Disiplin',20],...PH.map(ph=>[ph,12])],ROLES.map(r=>[r,...PH.map(ph=>(S.settings.roleF[r]||{})[ph]??1)]),'FF616161');
+  sheet('Kompleksitas',[['Level',16],['Faktor',12]],[1,2,3].map(c=>[CX_LABEL[c],S.settings.cxF[c]]),'FF616161');
+
+  if(data){
+    sheet('Ringkasan Utilisasi',[['Personel',28],['Disiplin',20],['Kapasitas (%)',14],['Total alokasi (%)',17],['Utilisasi (%)',14],['Status',12]],S.people.map(e=>{const u=util(e.id);return [e.name,e.role,e.cap,S.assigns.filter(a=>a.e===e.id).reduce((s,a)=>s+a.alloc,0),+u.toFixed(1),ST_LABEL[status(u)]]}),'FF8A8A8A');
+    sheet('Per Disiplin',[['Disiplin',20],['Utilisasi (%)',14],...PH.map(ph=>[ph+' (%)',14])],ROLES.map(r=>{const cap=S.people.filter(e=>e.role===r).reduce((s,e)=>s+(e.cap||100),0)||100;return [r,+roleUtil(r).toFixed(1),...PH.map(ph=>+(S.assigns.filter(a=>person(a.e)?.role===r&&proj(a.p)?.phase===ph).reduce((s,a)=>s+aLoad(a),0)*100/cap).toFixed(1))]}),'FF8A8A8A');
+  }
+  return wb}
+async function xlDownload(wb,name){
+  const buf=await wb.xlsx.writeBuffer();
+  if(DL){try{await DL.save({filename:name,data:new Blob([buf])});toast('File Excel siap diunduh')}catch(err){if(err&&err.code!=='declined')toast('Unduhan gagal: '+(err.message||err.code),'err')}return}
+  if(window.claude){toast('Unduhan tidak tersedia di tampilan ini. Buka versi GitHub Pages.','warn');return}
+  const u=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('File Excel diunduh')}
+
 /* forms */
 document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();const d=Object.fromEntries(new FormData(f));
   if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);if(ex)ex.alloc=clamp(ex.alloc+al,0,100);else S.assigns.push({id:uid('a'),p:d.p,e:d.e,alloc:al});markDirty();const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');if($('#ovl'))closeDialog();render()}
@@ -1210,6 +1573,7 @@ document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)retur
     const n={id,name:d.name.trim(),fac:d.fac.trim(),phase:d.phase,cx:+d.cx,start:d.start,end:d.end,progress:clamp(+d.progress||0,0,100)};
     if(orig){const i=S.projects.findIndex(p=>p.id===orig);S.projects[i]=n;if(orig!==id)S.assigns.forEach(a=>{if(a.p===orig)a.p=id})}else S.projects.push(n);
     markDirty();closeDialog();toast(orig?'Proyek diperbarui':'Proyek ditambahkan');render()}
+  if(f.dataset.form==='gh'){ghConnect(d);return}
   if(f.dataset.form==='person'){const orig=f.dataset.orig;const n={name:d.name.trim(),role:d.role,cap:clamp(+d.cap||100,10,100)};if(orig)Object.assign(person(orig),n);else S.people.push({id:uid('e'),...n});markDirty();closeDialog();toast(orig?'Personel diperbarui':'Personel ditambahkan');render()}
 });
 ['dragover','drop'].forEach(t=>document.addEventListener(t,e=>{if(!e.target.closest('.upl-zone'))e.preventDefault()}));
@@ -1916,7 +2280,7 @@ function mountCsw(){const el=$('#csw');if(!el)return;const top=[...S.projects].s
   {onFront:id=>{const p=proj(id),i=top.findIndex(x=>x.id===id);$('#cswInfo').innerHTML=`<span class="muted">${i+1}/${top.length}</span><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b><button class="btn sm" data-act="openProjectBtn" data-id="${p.id}">Detail</button>`}})}
 
 /* ---------- boot ---------- */
-shell();Particles($('#logoCv'),{size:36});render();
+shell();Particles($('#logoCv'),{size:36});render();ghBoot();
 (async()=>{try{if(window.claude&&claude.use){ART=await claude.use('artifact');DL=await claude.use('downloads')}}catch(e){}})();
 </script>
 </body>
