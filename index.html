@@ -304,6 +304,59 @@ table.t{width:100%;border-collapse:collapse;font-size:13px}
 .list-att .r .meter{margin-left:auto}
 .empty{padding:28px;text-align:center;color:var(--text-secondary)}
 .formula{font-family:ui-monospace,Consolas,monospace;font-size:12px;background:var(--surface-3);padding:10px 12px;border-radius:var(--r-sm);line-height:18px;overflow:auto}
+/* ── added: quiet redraw, language, heatmap contour, overload, top projects ── */
+.ro .edit-only,.ro [data-act=delMember],.ro [data-act=restore]{display:none!important}
+main.quiet *,main.quiet *::before,main.quiet *::after{animation:none!important;transition:none!important}
+main.quiet tr.flash td{animation:flash 1.8s var(--ease)!important}
+tr.flash td{animation:flash 1.8s var(--ease)}
+@keyframes flash{0%,35%{background:var(--accent-soft)}}
+.lang-btn{height:28px;min-width:40px;padding:0 9px;border-radius:14px;border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;letter-spacing:.04em;cursor:pointer}
+.lang-btn:hover{background:rgba(255,255,255,.28)}
+.hm .hc{cursor:pointer}
+.hm .hm-mon{font-size:12px;font-weight:600;text-align:center;border-bottom:2px solid var(--border);padding-bottom:3px;margin-bottom:2px;white-space:nowrap}
+.hm-scale .grad{width:180px;height:10px;border-radius:5px}
+.hm-ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.hm-ctl .in{height:28px;width:auto}
+.ov-list{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow:auto;margin:0 -6px;padding:0 6px}
+.ov-r{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(80px,1.1fr) 54px;align-items:center;gap:10px;padding:7px 6px;border-radius:4px;cursor:pointer}
+.ov-r:hover{background:var(--surface-2)}
+.ov-r .nm{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-r .rl{font-size:12px;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-bar{position:relative;height:10px;border-radius:5px;background:var(--surface-3)}
+.ov-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.ov-bar .lim{position:absolute;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--foreground);opacity:.5}
+.ov-r b{text-align:right;font-variant-numeric:tabular-nums;line-height:16px}
+.ov-r small{display:block;font-size:11px;font-weight:600;color:var(--danger)}
+.kpi.click{cursor:pointer;transition:box-shadow .15s,transform .15s}
+.kpi.click:hover{box-shadow:var(--shadow-16);transform:translateY(-1px)}
+.kpi .more{font-size:12px;color:var(--accent);font-weight:600}
+.ov-card{border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;margin-bottom:10px}
+.cb-wrap{position:relative;margin:10px 0 8px}
+.cb{display:flex;height:14px;border-radius:4px;background:var(--surface-3);overflow:hidden}
+.cb i{height:100%;box-shadow:inset -1px 0 0 var(--surface)}
+.cb-wrap .lim{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--foreground);opacity:.6}
+.tp-list{display:flex;flex-direction:column;gap:2px}
+.tp-r{display:grid;grid-template-columns:24px minmax(0,1fr) minmax(50px,80px) 40px;gap:8px;align-items:center;padding:6px;border-radius:4px;cursor:pointer;font-size:13px}
+.tp-r:hover{background:var(--surface-2)}
+.tp-r .rk{width:24px;height:24px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:11px;font-weight:700}
+.tp-r .nm,.tp-r .muted{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tp-r b{text-align:right;font-variant-numeric:tabular-nums}
+.tp-leg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-secondary)}
+.tp-leg i{display:block;width:90px;height:8px;border-radius:4px;background:linear-gradient(90deg,hsl(0 70% 42%),hsl(55 80% 42%),hsl(120 70% 34%))}
+.toast .undo{margin-left:auto;border:0;background:none;color:var(--accent);font-weight:700;cursor:pointer;padding:0 0 0 8px;white-space:nowrap}
+.mem{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto auto;gap:10px;align-items:center;padding:8px;border-radius:4px}
+.mem:hover{background:var(--surface-2)}
+.mem.flash{animation:flash2 1.8s var(--ease)}@keyframes flash2{0%,35%{background:var(--accent-soft)}}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.filters .in{width:auto}
+.pcount{font-size:12px;color:var(--text-secondary)}
+@media (max-width:720px){.ov-r{grid-template-columns:auto minmax(0,1fr) 70px 50px;gap:8px}.hm-ctl{justify-content:flex-start}.lang-btn{min-width:34px;padding:0 6px}}
+@media print{
+  .topbar,.nav,.page-head .actions,.btn,.seg,.toasts,#tip,.hm-ctl{display:none!important}
+  .shell{display:block;height:auto}main{overflow:visible;padding:0}
+  body{background:#fff}.card{box-shadow:none;border:1px solid #ddd;break-inside:avoid;animation:none}
+  .ov-list{max-height:none}
+}
 @media (max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g-12,.g2,.g3{grid-template-columns:1fr}}
 @media (max-width:720px){
   .shell{grid-template-columns:minmax(0,1fr);grid-template-rows:48px minmax(0,1fr) 60px}
@@ -734,6 +787,12 @@ const LV=['Junior','Middle','Senior'],LV_LABEL={Junior:'Junior',Middle:'Middle /
 const lvF=e=>((S.settings.lvF||LVF0)[e.level||'Middle']??1);
 const effCap=e=>(e.cap||100)*lvF(e);
 const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+/* language and per-device view preferences (never part of the shared data) */
+let LANG=(()=>{try{return localStorage.getItem('wl-lang')==='en'?'en':'id'}catch(e){return 'id'}})();
+const LOC=()=>LANG==='en'?'en-US':'id-ID';
+const PREF=(()=>{try{return JSON.parse(localStorage.getItem('wl-ui')||'{}')||{}}catch(e){return {}}})();
+function savePref(){try{localStorage.setItem('wl-ui',JSON.stringify({hmMode:UI.hmMode,cswMode:UI.cswMode,pSort:UI.pSort}))}catch(e){}}
+let QUIET=false;
 
 /* ---------- seed data ---------- */
 function seed(){
@@ -885,7 +944,7 @@ async function ghConflict(j,o){
   }catch(e){setSync('err',ghNet(e).message);return}
   conflictOpen=true;setSync('err','Data berbeda di GitHub');
   const sum=d=>`${(d.projects||[]).length} proyek · ${(d.people||[]).length} personel · ${(d.assigns||[]).length} penugasan`;
-  const when=d=>d.updatedAt?new Date(d.updatedAt).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'data contoh';
+  const when=d=>d.updatedAt?new Date(d.updatedAt).toLocaleString(LOC(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'data contoh';
   openDialog(`<div class="dh"><h3>Data berbeda</h3></div><p>Data di GitHub sudah diubah dari perangkat lain, sementara perangkat ini juga punya perubahan yang belum terkirim. Pilih versi yang dipakai.</p>
   <div class="compare" style="grid-template-columns:1fr 1fr;text-align:left"><div class="card" style="box-shadow:none;border:1px solid var(--border)"><b>Di GitHub</b><div class="muted" style="font-size:12px">${when(o)}</div><div style="margin-top:6px">${sum(o)}</div></div><div class="card" style="box-shadow:none;border:1px solid var(--border)"><b>Di perangkat ini</b><div class="muted" style="font-size:12px">${when(S)}</div><div style="margin-top:6px">${sum(S)}</div></div></div>
   <div class="foot"><button class="btn" id="cfRemote">Pakai versi GitHub</button><button class="btn primary" id="cfLocal">Timpa dengan versi ini</button></div>`);
@@ -922,18 +981,18 @@ function ghBoot(){if(!GH||!GHOK)return;ghStart();ghPull(true);
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const f0=n=>Math.round(n).toLocaleString('id-ID');
-const f1=n=>(Math.round(n*10)/10).toLocaleString('id-ID',{minimumFractionDigits:1,maximumFractionDigits:1});
-const f2=n=>(+n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+const f0=n=>Math.round(n).toLocaleString(LOC());
+const f1=n=>(Math.round(n*10)/10).toLocaleString(LOC(),{minimumFractionDigits:1,maximumFractionDigits:1});
+const f2=n=>(+n).toLocaleString(LOC(),{minimumFractionDigits:2,maximumFractionDigits:2});
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const ease=t=>1-Math.pow(1-t,3);
-function tween(dur,fn){if(RM){fn(1);return}const t0=performance.now();(function f(now){const t=clamp((now-t0)/dur,0,1);fn(ease(t));if(t<1)requestAnimationFrame(f)})(t0)}
+function tween(dur,fn){if(RM||QUIET){fn(1);return}const t0=performance.now();(function f(now){const t=clamp((now-t0)/dur,0,1);fn(ease(t));if(t<1)requestAnimationFrame(f)})(t0)}
 function rollNum(el,to,fmt=f0){const from=+(el.dataset.v||0);el.dataset.v=to;tween(900,t=>el.textContent=fmt(from+(to-from)*t))}
 const proj=id=>S.projects.find(p=>p.id===id);
 const person=id=>S.people.find(e=>e.id===id);
 const initials=n=>n.split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
 const pDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
-const fDate=s=>pDate(s).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'2-digit'});
+const fDate=s=>pDate(s).toLocaleDateString(LOC(),{day:'2-digit',month:'short',year:'2-digit'});
 
 /* ---------- calculation engine ---------- */
 function aLoad(a){const p=proj(a.p),e=person(a.e);if(!p||!e)return 0;const st=S.settings;
@@ -945,8 +1004,8 @@ const ST_LABEL={avail:'Tersedia',opt:'Optimal',over:'Overload'};
 const ST_COLOR=u=>({avail:'var(--accent)',opt:'var(--success)',over:'var(--danger)'})[status(u)];
 const badge=u=>`<span class="badge b-${status(u)}">${ST_LABEL[status(u)]}</span>`;
 function roleUtil(role,d0,d1){const ms=S.people.filter(e=>e.role===role);if(!ms.length)return 0;const cap=ms.reduce((s,e)=>s+effCap(e),0);return ms.reduce((s,e)=>s+util(e.id,d0,d1)*effCap(e)/100,0)*100/cap}
-function weeks(n=12){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:n},(_,i)=>{const s=new Date(d);s.setDate(d.getDate()+i*7);const e=new Date(s);e.setDate(s.getDate()+6);return {s,e,l:s.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}})}
-function months(n=12,back=3){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()-back);return Array.from({length:n},(_,i)=>{const s=new Date(d.getFullYear(),d.getMonth()+i,1);const e=new Date(d.getFullYear(),d.getMonth()+i+1,0);return {s,e,l:s.toLocaleDateString('id-ID',{month:'short',year:'2-digit'})}})}
+function weeks(n=12){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return Array.from({length:n},(_,i)=>{const s=new Date(d);s.setDate(d.getDate()+i*7);const e=new Date(s);e.setDate(s.getDate()+6);return {s,e,l:s.toLocaleDateString(LOC(),{day:'2-digit',month:'short'})}})}
+function months(n=12,back=3){const d=new Date();d.setDate(1);d.setHours(0,0,0,0);d.setMonth(d.getMonth()-back);return Array.from({length:n},(_,i)=>{const s=new Date(d.getFullYear(),d.getMonth()+i,1);const e=new Date(d.getFullYear(),d.getMonth()+i+1,0);return {s,e,l:s.toLocaleDateString(LOC(),{month:'short',year:'2-digit'})}})}
 const projLoad=pid=>S.assigns.filter(a=>a.p===pid).reduce((s,a)=>s+aLoad(a),0);
 const team=pid=>S.assigns.filter(a=>a.p===pid).map(a=>person(a.e)).filter(Boolean);
 
@@ -969,6 +1028,36 @@ const IC={
 };
 const ic=(n,s=20)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 
+/* ---------- language: Indonesian is written in the code, English is laid over it ----------
+   Every text node and a few attributes are translated as they appear,
+   and keep their original so switching back restores the Indonesian.
+   Names, codes and anything the user typed never match the dictionary. */
+const TR_EX=new Map([["Dashboard", "Dashboard"], ["Proyek", "Projects"], ["Personel", "People"], ["Penugasan", "Assignments"], ["Analisis disiplin", "Discipline analysis"], ["Pengaturan", "Settings"], ["Beranda", "Home"], ["Tugas", "Tasks"], ["Analisis", "Analysis"], ["Atur", "Settings"], ["Cari proyek, personel…", "Search projects, people…"], ["Rumus beban:", "Load formula:"], ["Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)", "Phase weight × Role factor × Complexity × Allocation × (1 − Progress)"], ["Tersimpan", "Saved"], ["Simpan", "Save"], ["Menyimpan…", "Saving…"], ["Tersinkron", "Synced"], ["Gagal · ulangi", "Failed · retry"], ["Memuat…", "Loading…"], ["Hanya lihat", "View only"], ["Ganti tema", "Switch theme"], ["Ganti tema terang/gelap", "Toggle light/dark theme"], ["Bahasa / Language", "Language / Bahasa"], ["Logo Workload: titik-titik membentuk grafik. Tekan untuk mengganti bentuk.", "Workload logo: dots forming a chart. Press to change the shape."], ["Dashboard beban kerja", "Workload dashboard"], ["Ringkasan utilisasi tim engineering per disiplin dan fase pekerjaan", "Engineering team utilization by discipline and work phase"], ["Cetak / PDF", "Print / PDF"], ["Proyek aktif", "Active projects"], ["Utilisasi rata-rata", "Average utilization"], ["Optimal", "Optimal"], ["Overload", "Overload"], ["Tersedia", "Available"], ["Aman", "Safe"], ["Lihat detail ›", "View details ›"], ["Proyek per fase", "Projects by phase"], ["DED berbobot paling besar", "DED carries the most weight"], ["Jumlah", "Count"], ["Beban", "Load"], ["proyek", "projects"], ["beban (FTE)", "load (FTE)"], ["Utilisasi per disiplin", "Utilization by discipline"], ["Kapasitas tim", "Team capacity"], ["Alokasi mentah", "Raw allocation"], ["Beban tertimbang", "Weighted load"], ["Terapkan bobot", "Apply weights"], ["Alokasi mentah: jumlah % alokasi tanpa bobot", "Raw allocation: sum of allocation % without weights"], ["Beban tertimbang: alokasi × bobot fase × faktor peran × kompleksitas × sisa progres", "Weighted load: allocation × phase weight × role factor × complexity × remaining progress"], ["Proyek beban tertinggi", "Highest-load projects"], ["tertinggi", "highest"], ["terendah", "lowest"], ["Kartu", "Cards"], ["Daftar", "List"], ["Detail", "Details"], ["angka = beban (FTE)", "number = load (FTE)"], ["Tidak ada personel di atas batas", "Nobody is over the limit"], ["Heatmap beban personel", "Personnel load heatmap"], ["Bulan ini", "This month"], ["Bulan sebelumnya", "Previous month"], ["Bulan berikutnya", "Next month"], ["Semua disiplin", "All disciplines"], ["Disiplin", "Discipline"], ["W1–W4 per bulan", "W1–W4 per month"], ["Hijau = longgar", "Green = free"], ["Kuning = optimal", "Yellow = optimal"], ["Merah = overload", "Red = overload"], ["Tidak ada personel overload", "Nobody is overloaded"], ["Inisiasi", "Initiation"], ["Belum ada proyek", "No projects yet"], ["Belum ada personel", "No people yet"], ["Belum ada data", "No data yet"], ["Klik fase untuk mengubahnya, klik baris untuk detail tim", "Click a phase to change it, click a row for team details"], ["Impor Excel", "Import Excel"], ["Proyek baru", "New project"], ["Kode", "Code"], ["Nama proyek", "Project name"], ["Fase", "Phase"], ["Kompleksitas", "Complexity"], ["Periode", "Period"], ["Progres", "Progress"], ["Tim", "Team"], ["Beban (FTE)", "Load (FTE)"], ["Rendah", "Low"], ["Sedang", "Medium"], ["Tinggi", "High"], ["Utilisasi tiap engineer, lead project, dan DocCon", "Utilization of every engineer, lead project and DocCon"], ["Personel baru", "New person"], ["Semua", "All"], ["Semua status", "All statuses"], ["Urutan asli", "Original order"], ["Nama A–Z", "Name A–Z"], ["Utilisasi tertinggi", "Highest utilization"], ["Utilisasi terendah", "Lowest utilization"], ["Urutkan", "Sort"], ["Tidak ada personel yang cocok dengan filter ini", "No people match this filter"], ["Belum ada penugasan", "No assignments yet"], ["Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi", "Assign people to projects and see the effect on utilization"], ["Penugasan baru", "New assignment"], ["Pratinjau utilisasi diperbarui langsung", "Utilization preview updates live"], ["Daftar penugasan", "Assignment list"], ["Cari personel atau proyek…", "Search people or projects…"], ["Semua proyek", "All projects"], ["Alokasi", "Allocation"], ["Hapus", "Delete"], ["Tidak ada penugasan yang cocok", "No matching assignments"], ["Alokasi waktu", "Time allocation"], ["Sekarang", "Now"], ["Tambahkan", "Add"], ["Alokasi (%)", "Allocation (%)"], ["Keluarkan dari proyek", "Remove from project"], ["Kompleksitas Rendah", "Low complexity"], ["Kompleksitas Sedang", "Medium complexity"], ["Kompleksitas Tinggi", "High complexity"], ["Progres fase", "Phase progress"], ["Total beban", "Total load"], ["Tim proyek", "Project team"], ["Belum ada anggota tim", "No team members yet"], ["Ubah", "Edit"], ["Tambah anggota", "Add member"], ["Kembali", "Back"], ["Tutup", "Close"], ["Ubah proyek", "Edit project"], ["Fasilitas", "Facility"], ["Mulai", "Start"], ["Selesai", "End"], ["Progres (%)", "Progress (%)"], ["Batal", "Cancel"], ["Ubah personel", "Edit person"], ["Nama", "Name"], ["Level", "Level"], ["Kapasitas (%)", "Capacity (%)"], ["Konfirmasi", "Confirm"], ["Hapus proyek", "Delete project"], ["beserta seluruh penugasannya?", "and all of its assignments?"], ["Ketik nama proyek, personel, atau halaman", "Type a project, person or page name"], ["Halaman", "Pages"], ["Aksi", "Actions"], ["Tidak ditemukan", "Not found"], ["Nama personel", "Person name"], ["Distribusi beban per fase dan tren bulanan", "Load distribution by phase and monthly trend"], ["Beban per disiplin per fase", "Load by discipline and phase"], ["Persentase terhadap kapasitas disiplin", "Percentage of discipline capacity"], ["Komposisi beban per fase", "Load composition by phase"], ["Tren utilisasi bulanan", "Monthly utilization trend"], ["Rata-rata per disiplin; kolom biru muda = bulan ini. Klik legenda untuk menyembunyikan seri.", "Average per discipline; light blue column = this month. Click the legend to hide a series."], ["Struktur beban: disiplin → personel → proyek", "Load structure: discipline → person → project"], ["Buka/tutup semua", "Expand/collapse all"], ["Fase / peran", "Phase / role"], ["Utilisasi / beban", "Utilization / load"], ["Utilisasi", "Utilization"], ["Bobot perhitungan dan pengelolaan data", "Calculation weights and data management"], ["Bobot fase", "Phase weights"], ["DED > FEED > Pre-FEED > Inisiasi", "DED > FEED > Pre-FEED > Initiation"], ["Faktor kompleksitas", "Complexity factors"], ["Faktor level personel", "Personnel level factors"], ["Mengalikan kapasitas: senior menyelesaikan lebih banyak pekerjaan per jam daripada junior", "Multiplies capacity: a senior gets more done per hour than a junior"], ["Ambang status", "Status thresholds"], ["Optimal mulai (%)", "Optimal from (%)"], ["Overload di atas (%)", "Overload above (%)"], ["Faktor peran per fase", "Role factors per phase"], ["Pengali beban tiap disiplin pada setiap fase", "Load multiplier for each discipline in each phase"], ["Rumus", "Formula"], ["Beban = Bobot fase × Faktor peran × Faktor kompleksitas × Alokasi × (1 − Progres)", "Load = Phase weight × Role factor × Complexity factor × Allocation × (1 − Progress)"], ["Kapasitas efektif = Kapasitas × Faktor level", "Effective capacity = Capacity × Level factor"], ["Utilisasi = Σ Beban ÷ Kapasitas efektif", "Utilization = Σ Load ÷ Effective capacity"], ["Cara membaca angka", "How to read the numbers"], ["Penjelasan FTE, level, dan rumus perhitungan", "FTE, levels and the calculation formula explained"], ["Apa itu FTE?", "What is FTE?"], ["FTE (Full-Time Equivalent) adalah satuan beban kerja setara satu orang bekerja penuh waktu. 1,0 FTE berarti pekerjaan yang menghabiskan seluruh waktu satu personel level Middle. 0,5 FTE berarti setengahnya.", "FTE (Full-Time Equivalent) is a unit of workload equal to one person working full time. 1.0 FTE is work that takes all of one Middle-level person's time. 0.5 FTE is half of that."], ["di halaman Proyek = jumlah beban semua penugasan proyek itu, dibagi 100. Sudah memakai bobot fase, peran, dan kompleksitas, jadi bukan sekadar jumlah orang.", "on the Projects page = the summed load of all that project's assignments, divided by 100. It already uses phase, role and complexity weights, so it is not just a head count."], ["Alokasi 100% pada fase DED, kompleksitas Sedang, semua faktor 1,0 menghasilkan 1,0 FTE.", "100% allocation in the DED phase, Medium complexity, all factors 1.0 gives 1.0 FTE."], ["Level personel", "Personnel levels"], ["Setiap personel punya level. Faktor level mengalikan kapasitas, jadi senior yang dialokasikan pada pekerjaan yang sama terlihat lebih longgar, dan junior lebih cepat penuh.", "Every person has a level. The level factor multiplies capacity, so a senior on the same work looks less loaded and a junior fills up sooner."], ["Faktor", "Factor"], ["Contoh hitungan", "Worked example"], ["Faktor peran", "Role factor"], [": DED paling berat, lalu FEED, Pre-FEED, dan Inisiasi.", ": DED is the heaviest, then FEED, Pre-FEED and Initiation."], [": seberapa besar keterlibatan sebuah disiplin pada tiap fase.", ": how involved a discipline is in each phase."], [": porsi waktu personel pada proyek. Progres yang naik mengurangi beban yang tersisa.", ": the share of a person's time on the project. Rising progress reduces the remaining load."], ["Sinkronisasi GitHub", "GitHub sync"], ["Agar data sama di HP, iPad, dan laptop", "Keeps the data the same on phone, iPad and laptop"], ["Agar data sama di HP, iPad, dan laptop. Ulangi pengisian ini sekali di tiap perangkat.", "Keeps the data the same on phone, iPad and laptop. Fill this in once on each device."], ["Repo data", "Data repo"], ["Boleh Private atau Public. Public berarti semua orang bisa membaca data. Terpisah dari repo aplikasi", "Private or Public. Public means anyone can read the data. Separate from the app repo"], ["Token", "Token"], ["Fine-grained token dengan Contents: Read and write", "Fine-grained token with Contents: Read and write"], ["File data", "Data file"], ["Branch", "Branch"], ["Hubungkan", "Connect"], ["Perubahan dikirim otomatis beberapa detik setelah Anda berhenti mengedit. Perangkat lain memeriksa pembaruan tiap 30 detik. Token tersimpan hanya di browser perangkat ini.", "Changes are sent automatically a few seconds after you stop editing. Other devices check for updates every 30 seconds. The token is stored only in this device's browser."], ["Sinkronkan sekarang", "Sync now"], ["Putuskan", "Disconnect"], ["Bagikan hanya lihat", "Share view-only"], ["Orang yang membuka tautan ini hanya bisa melihat data, tanpa token.", "People who open this link can only view the data, no token needed."], ["Repo data harus Public. Semua orang yang punya tautan bisa membaca isinya.", "The data repo must be Public. Anyone with the link can read it."], ["Repo ini Private, jadi tautan tidak akan berfungsi. Ubah repo data menjadi Public agar bisa dibagikan.", "This repo is Private, so the link will not work. Make the data repo Public to share it."], ["Salin tautan", "Copy link"], ["Menunggu dikirim", "Waiting to send"], ["Gagal", "Failed"], ["Siap", "Ready"], ["Mode hanya lihat", "View-only mode"], ["Khusus pemilik: hubungkan GitHub untuk mengedit", "Owner only: connect GitHub to edit"], ["Fitur ini aktif di versi GitHub Pages. Halaman di dalam claude.ai tidak boleh menghubungi GitHub, jadi di sini data tetap disimpan lewat tombol Simpan.", "This works in the GitHub Pages version. A page inside claude.ai may not contact GitHub, so here data is saved with the Save button."], ["Data", "Data"], ["Ekspor ke Excel, impor dari Excel dengan format yang sama, atau kembalikan data contoh", "Export to Excel, import from Excel in the same format, or restore the sample data"], ["Ekspor Excel", "Export Excel"], ["Unduh template Excel", "Download Excel template"], ["Salin ringkasan (CSV)", "Copy summary (CSV)"], ["Unduh cadangan (JSON)", "Download backup (JSON)"], ["Pulihkan dari cadangan", "Restore from backup"], ["Reset data contoh", "Reset to sample data"], ["Impor memakai format template: sheet Proyek, Personel, dan Penugasan. Hasil ekspor juga bisa diimpor kembali.", "Import uses the template format: the Proyek, Personel and Penugasan sheets. Exports can be imported back."], ["Tarik workbook ke sini", "Drop a workbook here"], ["atau tekan untuk memilih", "or tap to choose"], ["atau tekan untuk memilih.", "or tap to choose."], ["Lepas untuk impor", "Drop to import"], ["Impor workbook Excel. Tarik file ke sini atau tekan untuk memilih.", "Import an Excel workbook. Drop the file here or tap to choose."], ["Siap ditinjau", "Ready to review"], ["Terimpor", "Imported"], ["Hanya file .xlsx atau .xls", "Only .xlsx or .xls files"], ["Masih terlalu besar. Ukurannya tidak berubah.", "Still too big. Its size has not changed."], ["Didorong lebih keras tidak akan membantu", "Pushing harder will not help"], ["Sudah coba dikompres?", "Tried compressing it?"], ["Kotaknya mulai penuh alasan", "The box is filling up with excuses"], ["Tidak.", "No."], ["Reset data contoh?", "Reset to sample data?"], ["Semua proyek, personel, penugasan, dan bobot akan diganti dengan data contoh.", "All projects, people, assignments and weights will be replaced with the sample data."], ["Semua proyek, personel, penugasan, dan bobot akan diganti dengan data contoh. Unduh cadangan dulu agar bisa dipulihkan.", "All projects, people, assignments and weights will be replaced with the sample data. Download a backup first so it can be restored."], ["Data di GitHub juga ikut terganti.", "The data on GitHub will be replaced too."], ["Unduh cadangan dulu agar bisa dipulihkan.", "Download a backup first so it can be restored."], ["Ketik RESET untuk melanjutkan", "Type RESET to continue"], ["Unduh cadangan", "Download backup"], ["Reset", "Reset"], ["Pulihkan cadangan?", "Restore backup?"], ["Pulihkan", "Restore"], ["Urungkan", "Undo"], ["Dikembalikan", "Restored"], ["Cadangan diunduh", "Backup downloaded"], ["Cadangan siap diunduh", "Backup ready to download"], ["Cadangan dipulihkan", "Backup restored"], ["File bukan cadangan yang valid", "Not a valid backup file"], ["File bukan cadangan Workload", "Not a Workload backup file"], ["Unduhan gagal", "Download failed"], ["Data contoh dipulihkan", "Sample data restored"], ["Proyek ditambahkan", "Project added"], ["Proyek diperbarui", "Project updated"], ["Personel ditambahkan", "Person added"], ["Personel diperbarui", "Person updated"], ["Kode proyek sudah dipakai", "Project code already in use"], ["Tanggal selesai harus setelah mulai", "End date must be after the start date"], ["Mode hanya lihat: data tidak bisa diubah", "View-only mode: data cannot be changed"], ["Tidak ada perubahan untuk disimpan", "Nothing to save"], ["Tersimpan di browser ini", "Saved in this browser"], ["Perubahan tersimpan", "Changes saved"], ["Sudah tersinkron", "Already synced"], ["Data dimuat dari GitHub", "Data loaded from GitHub"], ["Data diperbarui dari perangkat lain", "Data updated from another device"], ["Tersambung ke GitHub", "Connected to GitHub"], ["Token belum diisi", "The token is empty"], ["Sinkronisasi diputus. Data tetap ada di perangkat ini.", "Sync disconnected. The data stays on this device."], ["Tautan hanya lihat disalin", "View-only link copied"], ["Salin manual dari kotak tautan", "Copy it manually from the link box"], ["Ringkasan CSV disalin ke clipboard", "CSV summary copied to the clipboard"], ["Clipboard tidak diizinkan di tampilan ini", "The clipboard is not allowed in this view"], ["Library Excel belum termuat", "The Excel library has not loaded yet"], ["Library Excel belum termuat. Periksa koneksi internet.", "The Excel library has not loaded. Check the internet connection."], ["File Excel diunduh", "Excel file downloaded"], ["File Excel siap diunduh", "Excel file ready to download"], ["Unduhan tidak tersedia di tampilan ini. Buka versi GitHub Pages.", "Downloads are not available in this view. Open the GitHub Pages version."], ["Draf yang belum disimpan dipulihkan", "Unsaved draft restored"], ["Memakai versi GitHub", "Using the GitHub version"], ["Repo data bersifat Public: siapa pun bisa membaca datanya. Pastikan Anda memang menginginkannya.", "The data repo is Public: anyone can read the data. Make sure that is what you want."], ["Tulis repo sebagai pemilik/nama, misalnya Malegiw/workload-data", "Write the repo as owner/name, for example Malegiw/workload-data"], ["Token ditolak atau sudah kedaluwarsa. Buat token baru.", "The token was rejected or has expired. Create a new token."], ["Token tidak punya izin tulis. Pada token, set Contents ke Read and write.", "The token has no write permission. Set Contents to Read and write on the token."], ["Repo atau branch tidak ditemukan, atau token tidak punya akses ke repo itu.", "Repo or branch not found, or the token has no access to that repo."], ["Batas permintaan GitHub tercapai, coba lagi sebentar lagi.", "GitHub rate limit reached, try again shortly."], ["Tidak ada koneksi. Perubahan aman di perangkat ini dan dikirim saat online.", "No connection. Changes are safe on this device and will be sent when online."], ["Data berbeda di GitHub", "The data differs on GitHub"], ["Data berbeda", "The data differs"], ["Data di GitHub sudah diubah dari perangkat lain, sementara perangkat ini juga punya perubahan yang belum terkirim. Pilih versi yang dipakai.", "The data on GitHub was changed from another device, and this device also has unsent changes. Choose which version to keep."], ["Di GitHub", "On GitHub"], ["Di perangkat ini", "On this device"], ["Pakai versi GitHub", "Use the GitHub version"], ["Timpa dengan versi ini", "Overwrite with this version"], ["data contoh", "sample data"], ["Data tidak bisa dimuat", "The data could not be loaded"], ["Pastikan tautan benar dan repo data bersifat Public.", "Check that the link is correct and the data repo is Public."], ["Memuat data…", "Loading data…"], ["File data belum ada di repo itu.", "The data file does not exist in that repo yet."], ["Isi file di GitHub bukan JSON yang valid", "The file on GitHub is not valid JSON"], ["Isi file di GitHub bukan data Workload", "The file on GitHub is not Workload data"], ["Penyimpanan permanen tidak tersedia di tampilan ini. Perubahan disimpan sebagai draf di browser.", "Permanent saving is not available in this view. Changes are kept as a draft in the browser."], ["Anda hanya punya akses baca. Perubahan tetap sebagai draf.", "You only have read access. Changes stay as a draft."], ["Data diperbarui oleh orang lain, halaman dimuat ulang", "The data was updated by someone else, reloading the page"], ["Impor dari Excel", "Import from Excel"], ["Tarik file .xlsx ke kotak. Anda bisa meninjau hasilnya sebelum data berubah.", "Drop an .xlsx file in the box. You can review the result before any data changes."], ["Unduh template", "Download template"], ["Tinjau impor", "Review import"], ["Gabung", "Merge"], ["Ganti semua", "Replace all"], ["Terapkan", "Apply"], ["Tidak ada perubahan", "No changes"], ["Proyek dicocokkan lewat kode, personel lewat nama. Yang sudah ada diperbarui, yang baru ditambahkan, yang tidak ada di file dibiarkan.", "Projects are matched by code, people by name. Existing ones are updated, new ones added, and those missing from the file are left alone."], ["Data pada sheet yang ada di file diganti seluruhnya oleh isi file. Data di sheet yang tidak ada di file tetap.", "Data for each sheet in the file is replaced entirely by the file. Data for sheets not in the file stays."], ["baru", "new"], ["Semua baris terbaca dengan benar.", "All rows read correctly."], ["Judul kolom tidak dikenali. Pakai judul dari template.", "Column headings not recognized. Use the headings from the template."], ["Kode proyek kosong", "Project code is empty"], ["Nama kosong", "Name is empty"], ["Kode tidak ada di sheet Proyek", "Code is not in the Proyek sheet"], ["Nama tidak ada di sheet Personel", "Name is not in the Personel sheet"], ["Angka tidak valid", "Invalid number"], ["Workbook tidak bisa dibaca", "The workbook could not be read"], ["File ini bukan workbook Excel (.xlsx) yang valid", "This is not a valid Excel workbook (.xlsx)"], ["Tidak ada sheet Proyek, Personel, atau Penugasan. Pakai template.", "No Proyek, Personel or Penugasan sheet. Use the template."]]);
+const TR_RX=([["^(\\d+) Inisiasi$", "$1 Initiation"], ["^(\\d+) disiplin termasuk DocCon$", "$1 disciplines incl. DocCon"], ["^(\\d+) personel masih tersedia \\(< (\\d+)%\\)$", "$1 people still available (< $2%)"], ["^Garis putus: batas optimal (\\d+)% dan overload (\\d+)%$", "Dashed lines: optimal from $1% and overload at $2%"], ["^dari ([\\d.,]+) FTE$", "of $1 FTE"], ["^(\\d+) teratas ·?$", "Top $1 ·"], ["^(\\d+) personel di atas batas$", "$1 people over the limit"], ["^garis = (\\d+)%$", "line = $1%"], ["^(\\d+) minggu ke depan, berdasarkan periode proyek aktif$", "Next $1 weeks, based on active project periods"], ["^W(\\d) = tgl (\\d+)–(\\d+)$", "W$1 = days $2–$3"], ["^W(\\d) = (\\d+)–akhir bulan$", "W$1 = $2–end of month"], ["^(\\d+) minggu$", "$1 weeks"], ["^Proyeksi (\\d+) minggu$", "$1-week projection"], ["^Utilisasi (-?[\\d.,]+)%$", "Utilization $1%"], ["^utilisasi (-?[\\d.,]+)%$", "utilization $1%"], ["^warna = fase proyek, garis = batas (\\d+)%$", "colour = project phase, line = $1% limit"], ["^(\\d+) proyek$", "$1 projects"], ["^(\\d+) personel$", "$1 people"], ["^(\\d+) penugasan$", "$1 assignments"], ["^lebih ([\\d.,]+)%$", "over by $1%"], ["^Bisa dialihkan ke (.+) yang longgar:$", "Could move to a free $1:"], ["^alokasi ([\\d.,]+)% → ([\\d.,]+)%$", "allocation $1% → $2%"], ["^Alokasi ([\\d.,]+)% → beban ([\\d.,]+)%$", "Allocation $1% → load $2%"], ["^Tampilkan lebih banyak \\((\\d+) lagi\\)$", "Show more ($1 more)"], ["^Setelah \\(\\+([\\d.,]+)%\\)$", "After (+$1%)"], ["^(.+) sudah ada di (\\S+)\\. Alokasi akan ditambahkan ke penugasan yang ada\\.$", "$1 is already on $2. The allocation will be added to the existing assignment."], ["^Utilisasi (.+) akan melewati (\\d+)%\\. Pertimbangkan personel lain dari disiplin (.+), misalnya (.+)\\.$", "Utilization of $1 will exceed $2%. Consider another $3 person, for example $4."], ["^Utilisasi (.+) akan melewati (\\d+)%\\. Pertimbangkan personel lain dari disiplin (.+)\\.$", "Utilization of $1 will exceed $2%. Consider another $3 person."], ["^(.+) ditugaskan ke (\\S+)$", "$1 assigned to $2"], ["^Penugasan (.*) di (\\S*) dihapus$", "Assignment of $1 on $2 deleted"], ["^(.+) dikeluarkan dari (\\S+)$", "$1 removed from $2"], ["^Proyek (\\S+) dihapus$", "Project $1 deleted"], ["^(\\S+) dipindah ke fase (.+)$", "$1 moved to the $2 phase"], ["^(.+) dihapus$", "$1 deleted"], ["^Impor selesai: (\\d+) proyek baru, (\\d+) personel baru, (\\d+) penugasan$", "Import done: $1 new projects, $2 new people, $3 assignments"], ["^beban ([\\d.,]+)%$", "load $1%"], ["^Utilisasi total (.+)$", "Total utilization of $1"], ["^Alokasi (.+) \\(%\\)$", "Allocation of $1 (%)"], ["^Tambah anggota (\\S+)$", "Add member to $1"], ["^kapasitas ([\\d.,]+)% \\(efektif ([\\d.,]+) FTE\\)$", "capacity $1% (effective $2 FTE)"], ["^Total alokasi ([\\d.,]+)%$", "Total allocation $1%"], ["^beban tertimbang ([\\d.,]+)%$", "weighted load $1%"], ["^alokasi ([\\d.,]+)%$", "allocation $1%"], ["^progres ([\\d.,]+)%$", "progress $1%"], ["^Progres ([\\d.,]+)%$", "Progress $1%"], ["^Mis\\. (\\d+)% untuk personel paruh waktu$", "E.g. $1% for part-time staff"], ["^(\\d+) sel = (\\d+)% dari total beban$", "$1 cell = $2% of total load"], ["^(\\d+) sel = (\\d+)% beban$", "$1 cell = $2% of load"], ["^(.+) \\(bobot ([\\d.,]+)\\)$", "$1 (weight $2)"], ["^([\\d.,]+)% dari kapasitas$", "$1% of capacity"], ["^sekarang ([\\d.,]+) FTE nominal, atau ([\\d.,]+) FTE efektif setelah faktor level\\.$", "is now $1 FTE nominal, or $2 FTE effective after level factors."], ["^Kapasitas (\\d+)% menjadi$", "Capacity $1% becomes"], ["^Personel Senior, Civil/Structure, kapasitas (\\d+)%, dialokasikan (\\d+)% pada proyek DED kompleksitas Tinggi, progres (\\d+)%$", "A Senior Civil/Structure person, capacity $1%, allocated $2% to a High-complexity DED project at $3% progress"], ["^Beban = (.+)$", "Load = $1"], ["^Kapasitas efektif = (.+)$", "Effective capacity = $1"], ["^Utilisasi = (.+)$", "Utilization = $1"], ["^: di bawah (\\d+)% Tersedia, (\\d+) sampai (\\d+)% Optimal, di atas (\\d+)% Overload\\.$", ": below $1% Available, $2 to $3% Optimal, above $4% Overload."], ["^Data dibagikan lewat file (\\S+) di repo privat (\\S+) \\(branch (\\S+)\\)$", "Data is shared through $1 in the repo $2 (branch $3)"], ["^Anda melihat data dari (\\S+)\\. Halaman ini tidak bisa mengubah data dan diperbarui otomatis\\.$", "You are viewing data from $1. This page cannot change the data and updates automatically."], ["^\\.xlsx hingga (\\d+) MB$", ".xlsx up to $1 MB"], ["^Data sekarang \\((\\d+) proyek · (\\d+) personel · (\\d+) penugasan\\) akan diganti dengan isi cadangan \\((\\d+) proyek · (\\d+) personel · (\\d+) penugasan\\)\\.$", "Current data ($1 projects · $2 people · $3 assignments) will be replaced by the backup ($4 projects · $5 people · $6 assignments)."], ["^Gagal menyimpan: (.*)$", "Save failed: $1"], ["^Ekspor gagal: (.*)$", "Export failed: $1"], ["^Gagal membuat template: (.*)$", "Could not create the template: $1"], ["^Unduhan gagal: (.*)$", "Download failed: $1"], ["^(\\d+) diperbarui$", "$1 updated"], ["^(\\d+) bobot diperbarui$", "$1 weights updated"], ["^(\\d+) penugasan dibuang karena proyek atau personelnya tidak ada$", "$1 assignments dropped because their project or person is missing"], ["^Setelah impor: (\\d+) personel overload$", "After import: $1 people overloaded"], ["^(\\d+) baris dilewati$", "$1 rows skipped"], ["^(\\d+) catatan$", "$1 notes"], ["^dan (\\d+) lainnya$", "and $1 more"], ["^sheet terbaca: (.*)$", "sheets read: $1"], ["^(Proyek|Personel|Penugasan|Bobot Fase|Faktor Peran|Kompleksitas|Faktor Level) baris (\\d+)$", "$1 row $2"], ["^(.+)\\. Tekan untuk kartu berikutnya\\.$", "$1. Press for the next card."], ["^→ Tersedia$", "→ Available"]]).map(([a,b])=>[new RegExp(a),b]);
+const TR_W=([["Inisiasi", "Initiation"], ["Rendah", "Low"], ["Sedang", "Medium"], ["Tinggi", "High"], ["Tersedia", "Available"], ["personel", "people"], ["proyek", "projects"], ["penugasan", "assignments"], ["utilisasi", "utilization"], ["Utilisasi", "Utilization"], ["alokasi", "allocation"], ["Alokasi", "Allocation"], ["beban", "load"], ["Beban", "Load"], ["progres", "progress"], ["Progres", "Progress"], ["kapasitas", "capacity"], ["bobot", "weight"], ["baris", "row"], ["tidak dikenal", "not recognized"], ["tidak valid", "is not valid"]]).map(([a,b])=>[new RegExp('(^|[^A-Za-zÀ-ÿ])'+a+'(?=$|[^A-Za-zÀ-ÿ])','g'),b]);
+/* names of people, projects and facilities are never translated word by word */
+let TRD=[],TRDk='';
+function trHasData(s){const k=S.projects.length+'|'+S.people.length+'|'+REV;if(k!==TRDk){TRDk=k;TRD=[...new Set([...S.people.map(e=>e.name),...S.projects.flatMap(p=>[p.name,p.fac])])].filter(x=>x&&x.length>=4)}return TRD.some(x=>s.includes(x))}
+function trSeg(s){const r=TR_EX.get(s);if(r!=null)return r;let o=s;for(const [rx,rp] of TR_RX){if(rx.test(o))o=o.replace(rx,rp)}
+  if(/[a-z]{3}/i.test(o)&&!trHasData(s))for(const [rx,rp] of TR_W)o=o.replace(rx,(m,p)=>p+rp);return o}
+function trLine(s){const m=s.match(/^(\s*)([\s\S]*?)(\s*)$/);const c=m[2];if(!c||!/[A-Za-z]/.test(c))return s;let r=TR_EX.get(c);
+  if(r==null)r=c.includes(' · ')&&!TR_RX.some(([rx])=>rx.test(c))?c.split(' · ').map(trSeg).join(' · '):trSeg(c);return m[1]+r+m[3]}
+function trStr(s){if(LANG!=='en'||!s)return s;return s.includes('\n')?s.split('\n').map(trLine).join('\n'):trLine(s)}
+const TR_SKIP=new Set(['SCRIPT','STYLE','TEXTAREA']);const TR_ATTR=['placeholder','title','aria-label'];
+function trSkip(el){for(let p=el;p&&p.nodeType===1;p=p.parentNode){if(TR_SKIP.has(p.nodeName)||p.hasAttribute('data-nt'))return true}return false}
+/* a form label or a column heading names one thing: Project, not Projects */
+const TR_LB=new Map([['Proyek','Project'],['Personel','Person'],['Penugasan','Assignment']]);
+function trText(n){if(n.__o===undefined){if(LANG!=='en')return;n.__o=n.nodeValue}const pn=n.parentNode&&n.parentNode.nodeName,c=n.__o.trim();
+  const v=LANG!=='en'?n.__o:(pn==='LABEL'||pn==='TH')&&TR_LB.has(c)?n.__o.replace(c,TR_LB.get(c)):trStr(n.__o);if(n.nodeValue!==v){n.__t=v;n.nodeValue=v}}
+function trAttr(el,a){if(!el.hasAttribute(a))return;el.__oa=el.__oa||{};if(el.__oa[a]===undefined){if(LANG!=='en')return;el.__oa[a]=el.getAttribute(a)}const v=LANG==='en'?trStr(el.__oa[a]):el.__oa[a];if(el.getAttribute(a)!==v){(el.__ta=el.__ta||{})[a]=v;el.setAttribute(a,v)}}
+function trNode(root){if(!root)return;if(root.nodeType===3){if(!trSkip(root.parentNode))trText(root);return}if(root.nodeType!==1||trSkip(root))return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT,{acceptNode:n=>n.nodeType===1&&(TR_SKIP.has(n.nodeName)||n.hasAttribute('data-nt'))?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
+  TR_ATTR.forEach(a=>trAttr(root,a));let n;while((n=w.nextNode())){if(n.nodeType===3)trText(n);else TR_ATTR.forEach(a=>trAttr(n,a))}}
+const TRO=new MutationObserver(ms=>{for(const m of ms){
+  if(m.type==='childList'){m.addedNodes.forEach(n=>trNode(n))}
+  else if(m.type==='characterData'){const n=m.target;if(n.nodeValue!==n.__t&&!trSkip(n.parentNode)){n.__o=undefined;trText(n)}}
+  else if(m.type==='attributes'){const el=m.target,a=m.attributeName;if(el.__ta&&el.__ta[a]===el.getAttribute(a))continue;if(el.__oa)delete el.__oa[a];if(!trSkip(el))trAttr(el,a)}}});
+
 /* ---------- shell ---------- */
 const VIEWS=[['dashboard','Dashboard','dash','Beranda'],['proyek','Proyek','proj','Proyek'],['personel','Personel','ppl','Personel'],['penugasan','Penugasan','asg','Tugas'],['analisis','Analisis disiplin','ana','Analisis'],['pengaturan','Pengaturan','set','Atur']];
 function shell(){
@@ -978,13 +1067,14 @@ function shell(){
     <button class="search-btn" data-act="cmd">${ic('search',16)}<span>Cari proyek, personel…</span><kbd>Ctrl K</kbd></button>
     <div class="top-actions">
       <button class="save-btn" id="saveBtn" data-act="save"><span class="dot"></span>${ic('save',16)}<span class="lbl">Tersimpan</span></button>
+      <button class="lang-btn" id="langBtn" data-act="lang" title="Bahasa / Language" data-nt>${LANG==='en'?'EN':'ID'}</button>
       <button class="ltoggle" data-act="theme" aria-label="Ganti tema"><span class="knob" id="knob"></span></button>
     </div>
   </header>
   <nav class="nav" id="nav">${VIEWS.map(v=>`<a href="#${v[0]}" data-v="${v[0]}">${ic(v[2])}<span class="ln">${v[1]}</span><span class="sn">${v[3]}</span></a>`).join('')}
-    <div class="foot">Data contoh. Rumus beban:<br>Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)</div></nav>
+    <div class="foot">Rumus beban:<br>Bobot fase × Faktor peran × Kompleksitas × Alokasi × (1 − Progres)</div></nav>
   <main id="main"></main></div><div id="tip"></div><div class="toasts" id="toasts"></div>`;
-  applyTheme();updateSave();
+  applyTheme();updateSave();document.documentElement.lang=LANG;trNode(document.body);
 }
 function updateSave(){const b=$('#saveBtn');if(!b)return;
   if(isRO()){b.classList.remove('dirty');b.style.pointerEvents='none';b.querySelector('.lbl').textContent=ROST==='load'?'Memuat…':'Hanya lihat';return}
@@ -994,14 +1084,21 @@ function getTheme(){try{return localStorage.getItem('wl-theme')||(matchMedia('(p
 function applyTheme(){const t=getTheme();document.documentElement.setAttribute('data-theme',t);const k=$('#knob');if(k)k.innerHTML=ic(t==='dark'?'moon':'sun',12)}
 
 /* ---------- UI state ---------- */
-const UI={sort:{},donutMode:'count',pFilter:'Semua',aFilter:'',aLimit:50,wRole:'Semua',lcOff:{},open:{}};
+const UI={sort:{},donutMode:'count',pFilter:'Semua',sFilter:'Semua status',pSort:PREF.pSort||'urut',aFilter:'',aQ:'',aLimit:50,wRole:'Semua',lcOff:{},open:{},
+  hmMode:PREF.hmMode==='month'?'month':'week',hmOff:0,hmRole:'Semua',cswMode:PREF.cswMode==='list'?'list':'cards',flash:null,afP:'',afAlloc:30};
 function route(){const h=(location.hash||'').slice(1);return VIEWS.some(v=>v[0]===h)?h:'dashboard'}
+let LASTV=null,QT=0;
 function render(){
-  const v=route();$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  const v=route();const nav=v!==LASTV;LASTV=v;$$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
   document.body.classList.toggle('ro',isRO());
   const m=$('#main');
   if(isRO()&&ROST!=='ok'){m.innerHTML=ROST==='err'?`<div class="card"><h2>Data tidak bisa dimuat</h2><p class="muted">${esc(ROMSG)}</p><p class="muted" style="font-size:13px">Pastikan tautan benar dan repo data bersifat Public.</p></div>`:`<div class="card"><h2>Memuat data…</h2></div>`;return}
-  m.innerHTML=PAGES[v]();m.scrollTop=0;(MOUNT[v]||(()=>{}))();initSegs();
+  const sc=m.scrollTop,ae=document.activeElement,fid=ae&&ae.id&&m.contains(ae)?ae.id:null;let sel=null;try{if(fid&&ae.selectionStart!=null)sel=[ae.selectionStart,ae.selectionEnd]}catch(e){}
+  QUIET=!nav;m.classList.toggle('quiet',!nav);
+  m.innerHTML=PAGES[v]();trNode(m);(MOUNT[v]||(()=>{}))();initSegs();
+  m.scrollTop=nav?0:sc;
+  if(fid){const x=document.getElementById(fid);if(x){x.focus({preventScroll:true});try{if(sel)x.setSelectionRange(sel[0],sel[1])}catch(e){}}}
+  clearTimeout(QT);QT=setTimeout(()=>{QUIET=false;m.classList.remove('quiet')},200);
   if(isRO())updateSave();
   if(isRO())$$('#main input,#main select,#main textarea').forEach(x=>{if(!x.closest('details'))x.disabled=true});
 }
@@ -1027,7 +1124,7 @@ function table(id,cols,rows,opt={}){
   if(st.key){const c=cols.find(c=>c.key===st.key);if(c){const g=c.val||(r=>r[c.key]);rs.sort((a,b)=>{const x=g(a),y=g(b);return (typeof x==='number'?x-y:String(x).localeCompare(String(y),'id'))*(st.dir==='desc'?-1:1)})}}
   if(!rs.length)return `<div class="empty">${opt.empty||'Belum ada data'}</div>`;
   if(opt.limit)rs=rs.slice(0,opt.limit);const more=total-rs.length;
-  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="${opt.noAnim?'':'enter '}${opt.rowAct?'click':''}" ${opt.noAnim?'':`style="animation-delay:${Math.min(i,15)*18}ms"`} ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${more>0?`<div style="text-align:center;margin-top:12px"><button class="btn" data-act="${opt.moreAct}">Tampilkan lebih banyak (${more} lagi)</button></div>`:''}`;
+  return `<div class="tw"><table class="t"><thead><tr>${cols.map(c=>`<th class="${c.num?'num ':''}${c.nosort?'':'s '}${st.key===c.key?'sorted '+(st.dir==='desc'?'desc':''):''}" ${c.nosort?'':`data-act="sort" data-t="${id}" data-k="${c.key}"`}>${c.label}${c.nosort?'':'<span class="ar">▲</span>'}</th>`).join('')}</tr></thead><tbody>${rs.map((r,i)=>`<tr class="${opt.noAnim?'':'enter '}${opt.rowAct?'click':''}${opt.rowCls?' '+opt.rowCls(r):''}" ${opt.noAnim?'':`style="animation-delay:${Math.min(i,15)*18}ms"`} ${opt.rowAct?`data-act="${opt.rowAct}" data-id="${r.id}"`:''}>${cols.map(c=>`<td class="${c.num?'num':''}">${c.render?c.render(r):esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${more>0?`<div style="text-align:center;margin-top:12px"><button class="btn" data-act="${opt.moreAct}">Tampilkan lebih banyak (${more} lagi)</button></div>`:''}`;
 }
 
 /* charts */
@@ -1046,11 +1143,27 @@ function barChart(el,items,max=150){
   el.innerHTML=`<div class="bc"><div class="bc-plot">${[70,100].map(m=>`<div class="bc-mark ${m===100?'hi':''}" style="bottom:${m/max*100}%"><span>${m}%</span></div>`).join('')}${items.map(it=>`<div class="bc-col" data-tip="${esc(it.label)}\nUtilisasi ${f0(it.value)}% · ${ST_LABEL[status(it.value)]}"><div class="bc-bar" style="height:0;background:${ST_COLOR(it.value)}"><em>${f0(it.value)}%</em></div></div>`).join('')}</div><div class="bc-x">${items.map(it=>`<span>${esc(it.short)}</span>`).join('')}</div></div>`;
   requestAnimationFrame(()=>requestAnimationFrame(()=>$$('.bc-bar',el).forEach((b,i)=>b.style.height=clamp(items[i].value,0,max)/max*100+'%')));
 }
-function hmColor(u){if(u<=0)return 'var(--surface-3)';if(u>S.settings.thr.high)return `color-mix(in srgb, var(--danger) ${clamp(45+(u-100)*1.2,45,95)}%, var(--surface))`;return `color-mix(in srgb, var(--accent) ${clamp(12+u*.7,12,82)}%, var(--surface))`}
-function heatmap(el){
-  const W=weeks(12);const ppl=[...S.people].sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role));
-  el.innerHTML=`<div class="hm-wrap"><div class="hm" style="grid-template-columns:150px repeat(${W.length},1fr)"><div></div>${W.map(w=>`<div class="hh">${w.l}</div>`).join('')}${ppl.map(e=>`<div class="hn">${avatar(e)}<span>${esc(e.name)}</span></div>${W.map(w=>{const u=util(e.id,w.s,w.e);return `<div class="hc" style="background:${hmColor(u)}" data-tip="${esc(e.name)} · ${w.l}\nUtilisasi ${f0(u)}%">${f0(u)}</div>`}).join('')}`).join('')}</div></div>
-  <div class="hm-scale mt"><span>0%</span>${[0,30,60,90].map(u=>`<i style="background:${hmColor(u||1)}"></i>`).join('')}<span>100%</span><i style="background:${hmColor(120)}"></i><span>Overload</span></div>`;
+/* contour: green when there is room, yellow around optimal, red past overload */
+function heat(u){if(!(u>0.05))return 'var(--surface-3)';const hi=S.settings.thr.high||100;const t=clamp(u/(hi*1.25),0,1);const hue=Math.round(130*(1-t));
+  return document.documentElement.getAttribute('data-theme')==='dark'?`hsl(${hue} 60% ${30+t*12}%)`:`hsl(${hue} ${60+t*16}% ${68-t*26}%)`}
+const hmColor=heat;
+/* rank colour for a top list: 1 = highest = red, last = green */
+const rankCol=(t,l=40)=>`hsl(${Math.round(120*(1-clamp(t,0,1)))} 70% ${l}%)`;
+function hmCols(){
+  if(UI.hmMode!=='month')return {cols:weeks(12).map(w=>({...w,tip:w.l})),groups:null};
+  const b=new Date();b.setHours(0,0,0,0);b.setDate(1);b.setMonth(b.getMonth()+UI.hmOff);
+  const n=matchMedia('(max-width:720px)').matches?2:3;const cols=[],groups=[];
+  for(let i=0;i<n;i++){const y=b.getFullYear(),m=b.getMonth()+i;const last=new Date(y,m+1,0).getDate();const ml=new Date(y,m,1).toLocaleDateString(LOC(),{month:'long',year:'numeric'});groups.push(ml);
+    [[1,7],[8,14],[15,21],[22,last]].forEach(([a,z],k)=>cols.push({s:new Date(y,m,a),e:new Date(y,m,z),l:'W'+(k+1),tip:`${ml} · W${k+1} (${a}–${z})`}))}
+  return {cols,groups};
+}
+function heatmap(el){if(!el)return;
+  const {cols:W,groups}=hmCols();const rf=UI.hmRole;const hi=S.settings.thr.high;
+  const ppl=S.people.filter(e=>rf==='Semua'||ROLE_SHORT[e.role]===rf).sort((a,b)=>ROLES.indexOf(a.role)-ROLES.indexOf(b.role));
+  if(!ppl.length){el.innerHTML='<div class="empty">Belum ada personel</div>';return}
+  const head=groups?`<div></div>${groups.map(g=>`<div class="hm-mon" style="grid-column:span 4">${esc(g)}</div>`).join('')}`:'';
+  const mob=matchMedia("(max-width:720px)").matches;el.innerHTML=`<div class="hm-wrap"><div class="hm" style="grid-template-columns:${mob?104:150}px repeat(${W.length},minmax(${mob?30:34}px,1fr));${mob?"min-width:0":""}">${head}<div></div>${W.map(w=>`<div class="hh">${w.l}</div>`).join('')}${ppl.map(e=>`<div class="hn">${avatar(e)}<span>${esc(e.name)}</span></div>${W.map(w=>{const u=util(e.id,w.s,w.e);return `<div class="hc" style="background:${heat(u)}" data-act="openPerson" data-id="${e.id}" data-tip="${esc(e.name)} · ${esc(w.tip)}\nUtilisasi ${f0(u)}% · ${ST_LABEL[status(u)]}">${f0(u)}</div>`}).join('')}`).join('')}</div></div>
+  <div class="hm-scale mt"><span>0%</span><i class="grad" style="background:linear-gradient(90deg,${[3,20,40,60,75,90,100,112,125].map(p=>heat(p*hi/100)).join(',')})"></i><span>${Math.round(hi*1.25)}%+</span><span style="margin-left:10px">Hijau = longgar · Kuning = optimal · Merah = overload</span></div>`;
 }
 function stacked(el){
   const max=Math.max(150,...ROLES.map(r=>roleUtil(r)+5));
@@ -1090,7 +1203,7 @@ function lineChart(el){
 /* tooltip & hover card */
 function showTip(x,y){const t=$('#tip');t.classList.add('on');const w=t.offsetWidth,h=t.offsetHeight;t.style.left=clamp(x+12,4,innerWidth-w-4)+'px';t.style.top=clamp(y-h-12,4,innerHeight-h-4)+'px'}
 function hideTip(){$('#tip')?.classList.remove('on')}
-document.addEventListener('pointerover',e=>{const t=e.target.closest('[data-tip]');if(t){$('#tip').textContent=t.dataset.tip;showTip(e.clientX,e.clientY);t.addEventListener('pointerleave',hideTip,{once:true})}
+document.addEventListener('pointerover',e=>{const t=e.target.closest('[data-tip]');if(t){$('#tip').textContent=trStr(t.dataset.tip);showTip(e.clientX,e.clientY);t.addEventListener('pointerleave',hideTip,{once:true})}
   const h=e.target.closest('[data-hc]');if(h&&e.pointerType==='mouse'){showHC(h)}});
 document.addEventListener('pointermove',e=>{if($('#tip')?.classList.contains('on')&&e.target.closest('[data-tip]'))showTip(e.clientX,e.clientY)});
 let hcEl=null;
@@ -1100,25 +1213,31 @@ function showHC(t){const e=person(t.dataset.hc);if(!e)return;hcEl?.remove();cons
   t.addEventListener('pointerleave',()=>{hcEl?.remove();hcEl=null},{once:true})}
 
 /* toast */
-function toast(msg,type='ok'){const c=$('#toasts');if(!c)return;const t=document.createElement('div');t.className='toast '+type;t.setAttribute('role','status');t.innerHTML=`<span>${esc(msg)}</span>`;c.appendChild(t);while(c.children.length>4)c.firstChild.remove();setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),260)},3400)}
+function toast(msg,type='ok',undo){const c=$('#toasts');if(!c)return;const t=document.createElement('div');t.className='toast '+type;t.setAttribute('role','status');t.innerHTML=`<span>${esc(msg)}</span>`;
+  if(undo){const b=document.createElement('button');b.className='undo';b.textContent='Urungkan';b.onclick=()=>{t.remove();undo()};t.appendChild(b)}
+  c.appendChild(t);while(c.children.length>4)c.firstChild.remove();setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),260)},undo?7000:3400)}
+/* undo: the lists as they were just before a delete */
+const snapshot=()=>JSON.stringify({projects:S.projects,people:S.people,assigns:S.assigns});
+function restoreSnap(s,pid){const o=JSON.parse(s);S.projects=o.projects;S.people=o.people;S.assigns=o.assigns;markDirty();toast('Dikembalikan');if(pid&&$('#ovl')&&proj(pid))reopenProject(pid);render()}
+function reopenProject(id){const d=$('#ovl .dialog');const sc=d&&$('#ovl').classList.contains('side')?d.scrollTop:0;openProject(id);const n=$('#ovl .dialog');if(n){n.style.animation='none';n.scrollTop=sc}}
 
 /* dialog */
 function openDialog(html,{side=false,cls=''}={}){closeDialog();const o=document.createElement('div');o.className='overlay'+(side?' side':'');o.id='ovl';o.innerHTML=`<div class="dialog ${cls}" role="dialog" aria-modal="true">${html}</div>`;o.addEventListener('pointerdown',e=>{if(e.target===o)closeDialog()});document.body.appendChild(o);setTimeout(()=>$('input:not([type=hidden]),select',o)?.focus(),60);return o}
 function closeDialog(){conflictOpen=false;$('#ovl')?.remove();$('.popover')?.remove()}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDialog();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd()}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches&&e.target.matches('.kpi.click'))openOver();if(e.key==='Escape')closeDialog();if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCmd()}});
 
 /* ---------- pages ---------- */
 const PAGES={},MOUNT={};
 PAGES.dashboard=()=>{
   const ppl=S.people,u=ppl.map(e=>util(e.id));const avg=u.reduce((s,v)=>s+v,0)/(u.length||1);const over=ppl.filter((e,i)=>u[i]>S.settings.thr.high);const avail=ppl.filter((e,i)=>u[i]<S.settings.thr.low);
   const W=weeks(12);const wAvg=W.map(w=>ppl.reduce((s,e)=>s+util(e.id,w.s,w.e),0)/(ppl.length||1));
-  const attn=ppl.map(e=>({e,u:util(e.id)})).sort((a,b)=>b.u-a.u).slice(0,6);
-  return `<div class="page-head"><div><h1>Dashboard beban kerja</h1><p>Ringkasan utilisasi tim engineering per disiplin dan fase pekerjaan</p></div><div class="actions"><button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button></div></div>
+  const hi=S.settings.thr.high;const all=ppl.map(e=>({e,u:util(e.id)})).sort((a,b)=>b.u-a.u);const ovl=all.filter(x=>x.u>hi);
+  return `<div class="page-head"><div><h1>Dashboard beban kerja</h1><p>Ringkasan utilisasi tim engineering per disiplin dan fase pekerjaan</p></div><div class="actions"><button class="btn" data-act="print">Cetak / PDF</button><button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button></div></div>
   <div class="grid g4">
     <div class="card kpi"><div class="lab">${ic('proj',16)}Proyek aktif</div><div class="row"><div class="val" data-roll="${S.projects.length}">0</div></div><div class="sub">${PH.map(ph=>`${S.projects.filter(p=>p.phase===ph).length} ${ph}`).join(' · ')}</div></div>
     <div class="card kpi"><div class="lab">${ic('ppl',16)}Personel</div><div class="row"><div class="val" data-roll="${ppl.length}">0</div>${avGroup(ppl,5)}</div><div class="sub">${ROLES.length} disiplin termasuk DocCon</div></div>
     <div class="card kpi"><div class="lab">${ic('ana',16)}Utilisasi rata-rata</div><div class="row"><div class="val"><span data-roll="${avg}">0</span><small>%</small></div>${badge(avg)}</div>${spark(wAvg,'var(--accent)')}</div>
-    <div class="card kpi"><div class="lab">${ic('warn',16)}Overload &gt; ${S.settings.thr.high}%</div><div class="row"><div class="val" style="color:${over.length?'var(--danger)':'inherit'}" data-roll="${over.length}">0</div>${over.length?avGroup(over,4):'<span class="badge b-opt">Aman</span>'}</div><div class="sub">${avail.length} personel masih tersedia (&lt; ${S.settings.thr.low}%)</div></div>
+    <div class="card kpi click" data-act="showOver" role="button" tabindex="0"><div class="lab">${ic('warn',16)}Overload &gt; ${S.settings.thr.high}%</div><div class="row"><div class="val" style="color:${over.length?'var(--danger)':'inherit'}" data-roll="${over.length}">0</div>${over.length?avGroup(over,4):'<span class="badge b-opt">Aman</span>'}</div><div class="sub">${avail.length} personel masih tersedia (&lt; ${S.settings.thr.low}%)</div><div class="more">Lihat detail ›</div></div>
   </div>
   <div class="grid g2 mt">
     <div class="card"><div class="card-head"><div><h2>Proyek per fase</h2><div class="sub">DED berbobot paling besar</div></div><div class="right">${seg('donut',['Jumlah','Beban'],UI.donutMode==='count'?'Jumlah':'Beban')}</div></div><div id="donut"></div></div>
@@ -1126,11 +1245,22 @@ PAGES.dashboard=()=>{
   </div>
   <div class="grid g3 mt">
     <div class="card" style="padding:0;display:grid;justify-items:center"><div id="ctx"></div></div>
-    <div class="card"><div class="card-head"><div><h2>Proyek beban tertinggi</h2><div class="sub">Tekan atau lempar kartu depan</div></div></div><div id="csw"></div><div class="csw-info" id="cswInfo"></div></div>
-    <div class="card"><div class="card-head"><div><h2>Perlu perhatian</h2><div class="sub">Utilisasi tertinggi saat ini</div></div></div><div class="list-att">${attn.map(a=>`<div class="r click" data-act="openPerson" data-id="${a.e.id}" style="cursor:pointer">${avatar(a.e)}<div><div style="font-weight:600">${esc(a.e.name)}</div><div class="muted" style="font-size:12px">${esc(a.e.role)}</div></div>${meter(a.u)}</div>`).join('')}</div></div>
+    <div class="card"><div class="card-head" style="flex-wrap:wrap"><div><h2>Proyek beban tertinggi</h2><div class="sub">10 teratas · <span class="tp-leg" style="display:inline-flex">tertinggi<i></i>terendah</span></div></div><div class="right">${seg('csw',['Kartu','Daftar'],UI.cswMode==='list'?'Daftar':'Kartu')}</div></div><div id="csw"></div><div class="csw-info" id="cswInfo"></div></div>
+    <div class="card"><div class="card-head"><div><h2>Overload &gt; ${hi}%</h2><div class="sub">${ovl.length?`${ovl.length} personel di atas batas · garis = ${hi}%`:'Tidak ada personel di atas batas'}</div></div><div class="right"><button class="btn sm" data-act="showOver">Detail</button></div></div>${ovList(ovl.length?ovl:all.slice(0,5))}</div>
   </div>
-  <div class="card mt"><div class="card-head"><div><h2>Heatmap 12 minggu ke depan</h2><div class="sub">Personel × minggu, berdasarkan periode proyek aktif</div></div></div><div id="hm"></div></div>`;
+  <div class="card mt"><div class="card-head" style="flex-wrap:wrap"><div><h2>Heatmap beban personel</h2><div class="sub">${UI.hmMode==='month'?'W1 = tgl 1–7 · W2 = 8–14 · W3 = 15–21 · W4 = 22–akhir bulan':'12 minggu ke depan, berdasarkan periode proyek aktif'}</div></div>
+    <div class="right hm-ctl">${UI.hmMode==='month'?`<button class="btn sm" data-act="hmNav" data-d="-1" aria-label="Bulan sebelumnya">‹</button><button class="btn sm" data-act="hmNav" data-d="0">Bulan ini</button><button class="btn sm" data-act="hmNav" data-d="1" aria-label="Bulan berikutnya">›</button>`:''}<select class="in" data-in="hmRole" aria-label="Disiplin">${['Semua',...ROLES.map(r=>ROLE_SHORT[r])].map(o=>`<option value="${esc(o)}" ${o===UI.hmRole?'selected':''}>${o==='Semua'?'Semua disiplin':esc(o)}</option>`).join('')}</select>${seg('hm',['12 minggu','W1–W4 per bulan'],UI.hmMode==='month'?'W1–W4 per bulan':'12 minggu')}</div></div><div id="hm"></div></div>`;
 };
+function ovList(list){if(!list.length)return '<div class="empty">Belum ada personel</div>';const hi=S.settings.thr.high;const mx=Math.max(hi*1.5,...list.map(x=>x.u));
+  return `<div class="ov-list">${list.map(({e,u})=>`<div class="ov-r" data-act="openPerson" data-id="${e.id}">${avatar(e)}<div style="min-width:0"><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)}</div></div><div class="ov-bar" data-tip="${esc(e.name)}\nUtilisasi ${f0(u)}%"><i style="width:${clamp(u/mx*100,0,100)}%;background:${heat(u)}"></i><span class="lim" style="left:${hi/mx*100}%"></span></div><b>${f0(u)}%${u>hi?`<small>+${f0(u-hi)}%</small>`:''}</b></div>`).join('')}</div>`}
+function openOver(){const hi=S.settings.thr.high,lo=S.settings.thr.low;const list=S.people.map(e=>({e,u:util(e.id)})).filter(x=>x.u>hi).sort((a,b)=>b.u-a.u);
+  const body=list.map(({e,u})=>{const as=S.assigns.filter(a=>a.e===e.id).map(a=>({a,p:proj(a.p),v:aLoad(a)*100/effCap(e)})).filter(x=>x.p&&x.v>0.05).sort((x,y)=>y.v-x.v);const mx=Math.max(u,hi)*1.04;
+    const alt=S.people.filter(x=>x.role===e.role&&x.id!==e.id).map(x=>({x,u:util(x.id)})).filter(o=>o.u<lo).sort((a,b)=>a.u-b.u).slice(0,3);
+    return `<div class="ov-card"><div style="display:flex;gap:10px;align-items:center">${avatar(e)}<div style="flex:1;min-width:0"><b>${esc(e.name)}</b><div class="muted" style="font-size:12px">${esc(e.role)} · ${as.length} proyek · lebih ${f0(u-hi)}%</div></div><b style="color:var(--danger);font-size:18px">${f0(u)}%</b></div>
+    <div class="cb-wrap"><div class="cb">${as.map(x=>`<i style="width:${x.v/mx*100}%;background:${PH_COLOR[x.p.phase]}" data-tip="${esc(x.p.id)} · ${esc(x.p.name)}\n${x.p.phase} · alokasi ${x.a.alloc}% → ${f1(x.v)}%"></i>`).join('')}</div><span class="lim" style="left:${hi/mx*100}%"></span></div>
+    <div class="chips">${as.map(x=>`<span class="chip" data-act="openProjectBtn" data-id="${esc(x.p.id)}" style="cursor:pointer"><i style="background:${PH_COLOR[x.p.phase]}"></i>${esc(x.p.id)} · ${f0(x.v)}%</span>`).join('')}</div>
+    ${alt.length?`<div class="muted" style="font-size:12px;margin-top:8px">Bisa dialihkan ke ${esc(ROLE_SHORT[e.role])} yang longgar: ${alt.map(o=>`<a href="#" data-act="openPerson" data-id="${o.x.id}">${esc(o.x.name)}</a> (${f0(o.u)}%)`).join(', ')}</div>`:''}</div>`}).join('');
+  openDialog(`<div class="dh"><div><h3>Overload &gt; ${hi}%</h3><div class="muted">${list.length} personel · warna = fase proyek, garis = batas ${hi}%</div></div><button class="btn subtle icon-btn x" data-act="close" aria-label="Tutup">${ic('x')}</button></div>${body||'<div class="empty">Tidak ada personel overload</div>'}`,{side:true})}
 MOUNT.dashboard=()=>{
   $$('[data-roll]').forEach(el=>{const v=+el.dataset.roll;el.dataset.v=0;tween(900,t=>el.textContent=f0(v*t))});
   mountCtx();mountCsw();drawDonut();barChart($('#bars'),ROLES.map(r=>({label:r,short:ROLE_SHORT[r],value:roleUtil(r)})));heatmap($('#hm'));
@@ -1149,29 +1279,30 @@ PAGES.proyek=()=>`<div class="page-head"><div><h1>Proyek</h1><p>Klik fase untuk 
     {key:'load',label:'Beban (FTE)',num:1,val:p=>projLoad(p.id),render:p=>`<b>${f2(projLoad(p.id)/100)}</b>`}
   ],S.projects,{rowAct:'openProject',sort:{key:'id',dir:'asc'}})}</div>`;
 
-PAGES.personel=()=>{const f=UI.pFilter;const list=S.people.filter(e=>f==='Semua'||ROLE_SHORT[e.role]===f).map(e=>({e,u:util(e.id)}));const W=weeks(12);
+PAGES.personel=()=>{const f=UI.pFilter,sf=UI.sFilter;const SF={Overload:'over',Optimal:'opt',Tersedia:'avail'};const list=S.people.filter(e=>f==='Semua'||ROLE_SHORT[e.role]===f).map(e=>({e,u:util(e.id)})).filter(x=>!SF[sf]||status(x.u)===SF[sf]);const W=weeks(12);
+  if(UI.pSort==='nama')list.sort((a,b)=>a.e.name.localeCompare(b.e.name,LOC()));else if(UI.pSort==='tinggi')list.sort((a,b)=>b.u-a.u);else if(UI.pSort==='rendah')list.sort((a,b)=>a.u-b.u);
   return `<div class="page-head"><div><h1>Personel</h1><p>Utilisasi tiap engineer, lead project, dan DocCon</p></div><div class="actions"><button class="btn primary" data-act="newPerson">${ic('plus',16)}Personel baru</button></div></div>
-  <div style="margin-bottom:16px">${seg('pf',['Semua',...ROLES.map(r=>ROLE_SHORT[r])],f)}</div>
-  <div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · ${esc(e.level||'Middle')} · ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
+  <div class="filters">${seg('pf',['Semua',...ROLES.map(r=>ROLE_SHORT[r])],f)}${seg('sf',['Semua status','Overload','Optimal','Tersedia'],sf)}<select class="in" data-in="pSort" aria-label="Urutkan">${[['urut','Urutan asli'],['nama','Nama A–Z'],['tinggi','Utilisasi tertinggi'],['rendah','Utilisasi terendah']].map(([k,l])=>`<option value="${k}" ${k===UI.pSort?'selected':''}>${l}</option>`).join('')}</select><span class="pcount">${list.length} personel</span></div>
+  ${list.length?'':'<div class="card empty">Tidak ada personel yang cocok dengan filter ini</div>'}<div class="pgrid">${list.map(({e,u},i)=>{const as=S.assigns.filter(a=>a.e===e.id);return `<div class="card pcard" style="animation-delay:${i*30}ms" data-act="openPerson" data-id="${e.id}"><div class="top">${avatar(e,'lg')}<div><div class="nm">${esc(e.name)}</div><div class="rl">${esc(e.role)} · ${esc(e.level||'Middle')} · ${e.cap}%</div><div style="margin-top:4px">${badge(u)}</div></div>${ring(u)}</div>${spark(W.map(w=>util(e.id,w.s,w.e)),ROLE_COLOR[e.role])}<div class="chips">${as.map(a=>{const p=proj(a.p);return p?`<span class="chip" data-tip="${esc(p.name)} · ${p.phase}\nAlokasi ${a.alloc}% → beban ${f1(aLoad(a))}%"><i style="background:${PH_COLOR[p.phase]}"></i>${esc(p.id)} · ${f0(aLoad(a))}%</span>`:''}).join('')||'<span class="muted" style="font-size:12px">Belum ada penugasan</span>'}</div></div>`}).join('')}</div>`};
 MOUNT.personel=()=>animateRings();
 
-PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const dq=new URLSearchParams(location.search);const f=UI.aFilter;const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee);
+PAGES.penugasan=()=>{const mob=matchMedia('(max-width:720px)').matches;const f=UI.aFilter,q=UI.aQ.trim().toLowerCase();const rows=S.assigns.filter(a=>!f||a.p===f).map(a=>({...a,pp:proj(a.p),ee:person(a.e)})).filter(r=>r.pp&&r.ee&&(!q||(r.ee.name+' '+r.ee.role+' '+r.pp.id+' '+r.pp.name+' '+r.pp.fac).toLowerCase().includes(q)));
   return `<div class="page-head"><div><h1>Penugasan</h1><p>Pasang personel ke proyek dan lihat dampaknya terhadap utilisasi</p></div><div class="actions">${mob?`<button class="btn primary" data-act="newAssign">${ic('plus',16)}Penugasan</button>`:''}<button class="btn" data-act="imp">${ic('ul',16)}Impor Excel</button></div></div>
   <div class="grid g-12">
-    ${mob?'':`<div class="card"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm()}</div>`}
-    <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div><div class="right"><select class="in" style="width:auto" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
+    ${mob?'':`<div class="card edit-only"><h2>Penugasan baru</h2><div class="sub" style="margin-bottom:14px">Pratinjau utilisasi diperbarui langsung</div>${assignForm(UI.afP)}</div>`}
+    <div class="card"><div class="card-head"><div><h2>Daftar penugasan</h2><div class="sub">${rows.length} penugasan</div></div></div><div class="filters" style="margin-top:-4px"><input class="in" id="aq" type="search" placeholder="Cari personel atau proyek…" value="${esc(UI.aQ)}" data-in="aQ" style="flex:1 1 180px;max-width:280px;width:auto" autocomplete="off"><select class="in" style="flex:1 1 180px;max-width:320px;min-width:0" data-in="aFilter"><option value="">Semua proyek</option>${S.projects.map(p=>`<option value="${p.id}" ${p.id===f?'selected':''}>${esc(p.id)} · ${esc(p.name)}</option>`).join('')}</select></div></div>
     ${table('asg',[
       {key:'p',label:'Proyek',render:r=>`<span class="code">${esc(r.p)}</span> ${esc(r.pp.name)}`},
       {key:'phase',label:'Fase',val:r=>PH.indexOf(r.pp.phase),render:r=>`<span class="chip"><i style="background:${PH_COLOR[r.pp.phase]}"></i>${r.pp.phase}</span>`},
       {key:'e',label:'Personel',val:r=>r.ee.name,render:r=>`<span style="display:inline-flex;align-items:center;gap:8px">${avatar(r.ee)}${esc(r.ee.name)}</span>`},
       {key:'role',label:'Disiplin',val:r=>r.ee.role,render:r=>esc(ROLE_SHORT[r.ee.role])},
-      {key:'alloc',label:'Alokasi',num:1,render:r=>dq.has('noinput')?`${r.alloc}%`:`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
+      {key:'alloc',label:'Alokasi',num:1,render:r=>isRO()?`${r.alloc}%`:`<input class="in rf" type="number" min="0" max="100" step="5" value="${r.alloc}" data-in="alloc" data-id="${r.id}">`},
       {key:'load',label:'Beban',num:1,val:r=>aLoad(r),render:r=>`<b>${f1(aLoad(r))}%</b>`},
       {key:'x',label:'',nosort:1,render:r=>`<button class="btn subtle icon-btn danger" data-act="delAssign" data-id="${r.id}" aria-label="Hapus">${ic('trash',16)}</button>`}
-    ],rows,{sort:{key:'p',dir:'asc'},limit:dq.has('rows')?+dq.get('rows'):UI.aLimit,moreAct:'moreAsg',noAnim:1})}</div></div>`};
-function assignForm(pid=''){return `<form data-form="assign" id="aform"><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
-  <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%</option>`).join('')}</optgroup>`).join('')}</select></div>
-  <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="30" data-in="aprev"><output>30%</output></div></div>
+    ],rows,{sort:{key:'p',dir:'asc'},limit:UI.aLimit,moreAct:'moreAsg',noAnim:1,rowCls:r=>r.id===UI.flash?'flash':'',empty:q?'Tidak ada penugasan yang cocok':'Belum ada penugasan'})}</div></div>`};
+function assignForm(pid='',ret=''){const al=UI.afAlloc||30;return `<form data-form="assign" id="aform" ${ret?`data-ret="${esc(ret)}"`:''}><div class="field"><label>Proyek</label><select class="in" name="p" data-in="aprev">${S.projects.map(p=>`<option value="${p.id}" ${p.id===pid?'selected':''}>${esc(p.id)} · ${esc(p.name)} (${p.phase})</option>`).join('')}</select></div>
+  <div class="field"><label>Personel</label><select class="in" name="e" data-in="aprev">${ROLES.map(r=>`<optgroup label="${esc(r)}">${S.people.filter(e=>e.role===r).map(e=>`<option value="${e.id}">${esc(e.name)} · ${f0(util(e.id))}%${pid&&S.assigns.some(a=>a.p===pid&&a.e===e.id)?' ✓':''}</option>`).join('')}</optgroup>`).join('')}</select></div>
+  <div class="field"><label>Alokasi waktu</label><div class="range"><input type="range" name="alloc" min="5" max="100" step="5" value="${al}" data-in="aprev"><output>${al}%</output></div></div>
   <div id="aprev"></div><div class="foot" style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn primary" type="submit">${ic('plus',16)}Tambahkan</button></div></form>`}
 function updAssignPreview(){const f=$('#aform');if(!f)return;const fd=new FormData(f);const p=proj(fd.get('p')),e=person(fd.get('e'));const al=+fd.get('alloc');const r=$('input[type=range]',f);r.style.setProperty('--p',(al-5)/95*100+'%');$('output',f).textContent=al+'%';if(!p||!e)return;
   const before=util(e.id);const add=aLoad({p:p.id,e:e.id,alloc:al})*100/effCap(e);const after=before+add;const dup=S.assigns.some(a=>a.p===p.id&&a.e===e.id);
@@ -1241,7 +1372,7 @@ PAGES.pengaturan=()=>{const st=S.settings;return `<div class="page-head"><div><h
   ${explainCard()}
   ${ghCard()}
   <div class="card mt"><h2>Data</h2><div class="sub" style="margin-bottom:14px">Ekspor ke Excel, impor dari Excel dengan format yang sama, atau kembalikan data contoh</div>
-   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="tpl">${ic('dl',16)}Unduh template Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format template: sheet Proyek, Personel, dan Penugasan. Hasil ekspor juga bisa diimpor kembali.</div></div></div></div>`};
+   <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:center"><div id="upl"></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start"><button class="btn primary" data-act="export">${ic('dl',16)}Ekspor Excel</button><button class="btn" data-act="tpl">${ic('dl',16)}Unduh template Excel</button><button class="btn" data-act="copyCsv">Salin ringkasan (CSV)</button><button class="btn" data-act="backup">${ic('dl',16)}Unduh cadangan (JSON)</button><button class="btn" data-act="restore">${ic('ul',16)}Pulihkan dari cadangan</button><button class="btn danger" data-act="reset">${ic('reset',16)}Reset data contoh</button><div class="muted" style="font-size:12px;max-width:260px">Impor memakai format template: sheet Proyek, Personel, dan Penugasan. Hasil ekspor juga bisa diimpor kembali.</div></div></div></div>`};
 MOUNT.pengaturan=()=>UploadDropzone($('#upl'),{onFile:xlImportFile});
 
 /* ---------- project & person dialogs ---------- */
@@ -1250,7 +1381,7 @@ function openProject(id){const p=proj(id);if(!p)return;const as=S.assigns.filter
   <div class="track">${PH.map((ph,i)=>`${i?`<div class="ln"><i style="transform:scaleX(${i<=pi?1:0})"></i></div>`:''}<div class="st ${i<pi?'done':i===pi?'cur':''}"><b>${i<pi?'✓':i+1}</b>${ph}</div>`).join('')}</div>
   <div class="row2"><div class="field"><label>Progres fase</label><div class="range"><input type="range" min="0" max="100" step="5" value="${p.progress}" data-in="pprog" data-id="${p.id}" style="--p:${p.progress}%"><output>${p.progress}%</output></div></div><div class="field"><label>Total beban</label><div style="font-size:20px;font-weight:600" id="pload">${f2(projLoad(p.id)/100)} FTE</div></div></div>
   <div class="card-head" style="margin:8px 0"><h2>Tim proyek</h2><div class="right">${avGroup(team(p.id),8)}</div></div>
-  <div class="list-att">${as.map(a=>{const e=person(a.e);return e?`<div class="r">${avatar(e)}<div><div style="font-weight:600">${esc(e.name)}</div><div class="muted" style="font-size:12px">${esc(e.role)} · alokasi ${a.alloc}% · beban ${f1(aLoad(a))}%</div></div><div class="meter">${meter(util(e.id))}</div></div>`:''}).join('')||'<div class="empty">Belum ada anggota tim</div>'}</div>
+  <div class="list-att">${as.map(a=>{const e=person(a.e);if(!e)return '';const u=util(e.id);return `<div class="mem${a.id===UI.flash?' flash':''}">${avatar(e)}<div style="min-width:0"><div style="font-weight:600;cursor:pointer" data-act="openPerson" data-id="${e.id}">${esc(e.name)}</div><div class="muted" style="font-size:12px">${esc(e.role)} · beban ${f1(aLoad(a))}%</div></div><span class="badge b-${status(u)}" data-tip="Utilisasi total ${esc(e.name)}">${f0(u)}%</span>${isRO()?`<b>${a.alloc}%</b>`:`<input class="in rf" type="number" min="0" max="100" step="5" value="${a.alloc}" data-in="alloc" data-id="${a.id}" data-pid="${esc(p.id)}" aria-label="Alokasi ${esc(e.name)} (%)" title="Alokasi (%)"><span class="muted" style="margin-left:-6px">%</span>`}${isRO()?'':`<button class="btn subtle icon-btn danger" data-act="delMember" data-id="${a.id}" data-pid="${esc(p.id)}" aria-label="Keluarkan dari proyek" title="Keluarkan dari proyek">${ic('trash',16)}</button>`}</div>`}).join('')||'<div class="empty">Belum ada anggota tim</div>'}</div>
   <div class="foot"><button class="btn danger" data-act="delProject" data-id="${p.id}">${ic('trash',16)}Hapus</button><button class="btn" data-act="editProject" data-id="${p.id}">${ic('edit',16)}Ubah</button><button class="btn primary" data-act="assignTo" data-id="${p.id}">${ic('plus',16)}Tambah anggota</button></div>`,{side:true})}
 function projectForm(p){const n=p||{id:'P-'+String(S.projects.length+1).padStart(2,'0'),name:'',fac:'',phase:'FEED',cx:2,start:new Date().toISOString().slice(0,10),end:new Date(Date.now()+180*864e5).toISOString().slice(0,10),progress:0};
   openDialog(`<div class="dh"><h3>${p?'Ubah proyek':'Proyek baru'}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div><form data-form="project" data-orig="${p?esc(p.id):''}">
@@ -1298,7 +1429,8 @@ const ACT={
   cmd:openCmd,close:closeDialog,
   theme(){const t=getTheme()==='dark'?'light':'dark';try{localStorage.setItem('wl-theme',t)}catch(e){}applyTheme();if(route()==='analisis'||route()==='dashboard')render()},
   seg(b){const id=b.dataset.id,v=b.dataset.val;$$(`[data-seg="${id}"] button`).forEach(x=>x.classList.toggle('on',x===b));placePill(b.parentElement);
-    if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}else if(id==='impmode'&&IMP){IMP.mode=v==='Gabung'?'merge':'replace';IMP.draw()}},
+    if(id==='donut'){UI.donutMode=v==='Beban'?'load':'count';drawDonut()}else if(id==='pf'){UI.pFilter=v;render()}else if(id==='wf'){UI.wRole=v;waffle($('#wf'))}else if(id==='impmode'&&IMP){IMP.mode=v==='Gabung'?'merge':'replace';IMP.draw()}
+    else if(id==='sf'){UI.sFilter=v;render()}else if(id==='csw'){UI.cswMode=v==='Daftar'?'list':'cards';savePref();mountCsw()}else if(id==='hm'){UI.hmMode=v==='12 minggu'?'week':'month';UI.hmOff=0;savePref();render()}},
   sort(th){const id=th.dataset.t,k=th.dataset.k;const cur=UI.sort[id]||{};UI.sort[id]={key:k,dir:cur.key===k&&cur.dir==='asc'?'desc':'asc'};render()},
   lcToggle(b){UI.lcOff[b.dataset.r]=!UI.lcOff[b.dataset.r];const el=$('#lc');lineChart(el)},
   tree(b){UI.open[b.dataset.k]=!UI.open[b.dataset.k];$('#tree').innerHTML=treeTable()},
@@ -1311,10 +1443,24 @@ const ACT={
   newPerson(){personForm()},editPerson(b){personForm(person(b.dataset.id))},
   moreAsg(){UI.aLimit+=50;render()},
   newAssign(){openDialog(`<div class="dh"><h3>Penugasan baru</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm()}`);updAssignPreview()},
-  assignTo(b){const id=b.dataset.id;openDialog(`<div class="dh"><h3>Tambah anggota ${esc(id)}</h3><button class="btn subtle icon-btn x" data-act="close">${ic('x')}</button></div>${assignForm(id)}`);updAssignPreview()},
-  delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn');render()},
-  delProject(b){const id=b.dataset.id;confirmDlg(`Hapus proyek <b>${esc(id)}</b> beserta seluruh penugasannya?`,()=>{S.projects=S.projects.filter(p=>p.id!==id);S.assigns=S.assigns.filter(a=>a.p!==id);markDirty();toast(`Proyek ${id} dihapus`,'warn');render()})},
-  delPerson(b){const id=b.dataset.id;const e=person(id);confirmDlg(`Hapus <b>${esc(e.name)}</b> beserta seluruh penugasannya?`,()=>{S.people=S.people.filter(x=>x.id!==id);S.assigns=S.assigns.filter(a=>a.e!==id);markDirty();toast(`${e.name} dihapus`,'warn');render()})},
+  assignTo(b){const id=b.dataset.id;openDialog(`<div class="dh"><h3>Tambah anggota ${esc(id)}</h3><button class="btn subtle icon-btn x" data-act="back" data-id="${esc(id)}" aria-label="Kembali">${ic('x')}</button></div>${assignForm(id,id)}`);updAssignPreview()},
+  back(b){reopenProject(b.dataset.id)},
+  showOver(){openOver()},
+  print(){window.print()},
+  hmNav(b){const d=+b.dataset.d;UI.hmOff=d?UI.hmOff+d:0;heatmap($('#hm'))},
+  lang(){LANG=LANG==='en'?'id':'en';try{localStorage.setItem('wl-lang',LANG)}catch(e){}document.documentElement.lang=LANG;const b=$('#langBtn');if(b)b.textContent=LANG==='en'?'EN':'ID';closeDialog();trNode(document.body);updateSave();LASTV=null;const m=$('#main'),sc=m.scrollTop;render();m.scrollTop=sc;toast(LANG==='en'?'Language: English':'Bahasa: Indonesia')},
+  delMember(b){const a=S.assigns.find(x=>x.id===b.dataset.id);if(!a)return;const snap=snapshot();S.assigns=S.assigns.filter(x=>x.id!==a.id);markDirty();toast(`${person(a.e)?.name||''} dikeluarkan dari ${a.p}`,'warn',()=>restoreSnap(snap,a.p));reopenProject(b.dataset.pid);render()},
+  backup(){const name=`workload-backup-${new Date().toISOString().slice(0,10)}.json`;const blob=new Blob([JSON.stringify(S,null,1)],{type:'application/json'});
+    if(DL){DL.save({filename:name,data:blob}).then(()=>toast('Cadangan siap diunduh')).catch(err=>{if(err&&err.code!=='declined')toast('Unduhan gagal','err')});return}
+    if(window.claude){toast('Unduhan tidak tersedia di tampilan ini. Buka versi GitHub Pages.','warn');return}
+    const u=URL.createObjectURL(blob);const a=Object.assign(document.createElement('a'),{href:u,download:name});document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);toast('Cadangan diunduh')},
+  restore(){const i=Object.assign(document.createElement('input'),{type:'file',accept:'.json,application/json'});i.onchange=async()=>{const fl=i.files[0];if(!fl)return;let o;try{o=JSON.parse(await fl.text())}catch(e){toast('File bukan cadangan yang valid','err');return}
+    if(!o||!Array.isArray(o.projects)||!Array.isArray(o.people)||!Array.isArray(o.assigns)){toast('File bukan cadangan Workload','err');return}
+    openDialog(`<div class="dh"><h3>Pulihkan cadangan?</h3></div><p>Data sekarang (${S.projects.length} proyek · ${S.people.length} personel · ${S.assigns.length} penugasan) akan diganti dengan isi cadangan (${o.projects.length} proyek · ${o.people.length} personel · ${o.assigns.length} penugasan).</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Pulihkan</button></div>`);
+    $('#okb').onclick=()=>{const keep=S.settings;S={...o,settings:o.settings||keep,v:o.v||1};closeDialog();markDirty();toast('Cadangan dipulihkan');render()}};i.click()},
+  delAssign(b){const a=S.assigns.find(x=>x.id===b.dataset.id);const snap=snapshot();S.assigns=S.assigns.filter(x=>x.id!==b.dataset.id);markDirty();toast(`Penugasan ${person(a?.e)?.name||''} di ${a?.p||''} dihapus`,'warn',()=>restoreSnap(snap));render()},
+  delProject(b){const id=b.dataset.id;confirmDlg(`Hapus proyek <b>${esc(id)}</b> beserta seluruh penugasannya?`,()=>{const snap=snapshot();S.projects=S.projects.filter(p=>p.id!==id);S.assigns=S.assigns.filter(a=>a.p!==id);markDirty();toast(`Proyek ${id} dihapus`,'warn',()=>restoreSnap(snap));render()})},
+  delPerson(b){const id=b.dataset.id;const e=person(id);confirmDlg(`Hapus <b>${esc(e.name)}</b> beserta seluruh penugasannya?`,()=>{const snap=snapshot();S.people=S.people.filter(x=>x.id!==id);S.assigns=S.assigns.filter(a=>a.e!==id);markDirty();toast(`${e.name} dihapus`,'warn',()=>restoreSnap(snap));render()})},
   async save(){if(GH&&GHOK){if(DIRTY||SYNC==='err')ghPush();else{await ghPull(true);if(SYNC==='ok')toast('Sudah tersinkron')}return}
     if(!DIRTY){toast('Tidak ada perubahan untuk disimpan','ok');return}
     if(!ART){if(!window.claude){DIRTY=false;updateSave();toast('Tersimpan di browser ini');return}toast('Penyimpanan permanen tidak tersedia di tampilan ini. Perubahan disimpan sebagai draf di browser.','warn');return}
@@ -1329,25 +1475,30 @@ const ACT={
     try{await navigator.clipboard.writeText(csv);toast('Ringkasan CSV disalin ke clipboard')}catch(e){toast('Clipboard tidak diizinkan di tampilan ini','err')}},
   ghSync(){if(DIRTY)ghPush();else ghPull(true)},
   ghOff(){ghDisconnect();render();toast('Sinkronisasi diputus. Data tetap ada di perangkat ini.','warn')},
-  reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan dikembalikan ke data contoh.</p><div class="foot"><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb">Reset</button></div>`);$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
+  reset(){openDialog(`<div class="dh"><h3>Reset data contoh?</h3></div><p>Semua proyek, personel, penugasan, dan bobot akan diganti dengan data contoh.${GH&&GHOK?' <b>Data di GitHub juga ikut terganti.</b>':''} Unduh cadangan dulu agar bisa dipulihkan.</p><div class="field"><label>Ketik RESET untuk melanjutkan</label><input class="in" id="rsIn" autocomplete="off" data-nt></div><div class="foot"><button class="btn" data-act="backup">${ic('dl',16)}Unduh cadangan</button><button class="btn" data-act="close">Batal</button><button class="btn primary" id="okb" disabled style="background:var(--danger);border-color:var(--danger)">Reset</button></div>`);
+    $('#rsIn').oninput=e=>{$('#okb').disabled=e.target.value.trim().toUpperCase()!=='RESET'};$('#okb').onclick=()=>{S=seed();closeDialog();markDirty();toast('Data contoh dipulihkan');render()}}
 };
-const RO_OK=new Set(['cmd','close','theme','seg','sort','lcToggle','tree','treeAll','openPerson','openProject','openProjectBtn','export','tpl','copyCsv','ghSync','copyLink']);
+const RO_OK=new Set(['cmd','close','theme','seg','sort','lcToggle','tree','treeAll','openPerson','openProject','openProjectBtn','export','tpl','copyCsv','ghSync','copyLink','showOver','print','hmNav','lang','backup','moreAsg','back']);
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;if(isRO()&&!RO_OK.has(t.dataset.act)){toast('Mode hanya lihat: data tidak bisa diubah','warn');return}const f=ACT[t.dataset.act];if(f){if(t.tagName==='A')e.preventDefault();f(t,e)}});
 
 /* inputs */
 let rt=null;
-document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(!k||isRO())return;const st=S.settings;
+let aqT=null;
+document.addEventListener('input',e=>{const t=e.target,k=t.dataset.in;if(k==='aQ'){UI.aQ=t.value;clearTimeout(aqT);aqT=setTimeout(()=>{UI.aLimit=50;render()},220);return}if(!k||isRO())return;const st=S.settings;
   if(k==='aprev')updAssignPreview();
   else if(k==='phaseW'){st.phaseW[t.dataset.k]=+t.value;t.style.setProperty('--p',t.value/1.5*100+'%');t.nextElementSibling.textContent=f2(t.value);markDirty()}
   else if(k==='roleF'){if(t.value!==''){(st.roleF[t.dataset.r]=st.roleF[t.dataset.r]||{})[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='lvF'){if(t.value!==''){(st.lvF=st.lvF||{...LVF0})[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='cxF'){if(t.value!==''){st.cxF[t.dataset.k]=+t.value;markDirty()}}
   else if(k==='thr'){if(t.value!==''){st.thr[t.dataset.k]=+t.value;markDirty()}}
-  else if(k==='pprog'){const p=proj(t.dataset.id);p.progress=+t.value;t.style.setProperty('--p',t.value+'%');t.nextElementSibling.textContent=t.value+'%';$('#pload').textContent=f2(projLoad(p.id)/100)+' FTE';markDirty();clearTimeout(rt);rt=setTimeout(()=>{const ov=$('#ovl');const sc=ov&&$('.dialog',ov).scrollTop;const m=$('#main').innerHTML=PAGES[route()]();(MOUNT[route()]||(()=>{}))();initSegs();if(ov)$('.dialog',ov).scrollTop=sc},400)}
-  else if(k==='alloc'){const a=S.assigns.find(x=>x.id===t.dataset.id);const v=clamp(+t.value||0,0,100);if(a){a.alloc=v;markDirty();const td=t.closest('tr').querySelector('td:nth-child(6) b');if(td)td.textContent=f1(aLoad(a))+'%'}}
+  else if(k==='pprog'){const p=proj(t.dataset.id);p.progress=+t.value;t.style.setProperty('--p',t.value+'%');t.nextElementSibling.textContent=t.value+'%';$('#pload').textContent=f2(projLoad(p.id)/100)+' FTE';markDirty();clearTimeout(rt);rt=setTimeout(()=>render(),400)}
+  else if(k==='alloc'){const a=S.assigns.find(x=>x.id===t.dataset.id);const v=clamp(+t.value||0,0,100);if(a){a.alloc=v;markDirty();const td=t.closest('tr')?.querySelector('td:nth-child(6) b');if(td)td.textContent=f1(aLoad(a))+'%';const pl=$('#pload');if(pl&&t.dataset.pid)pl.textContent=f2(projLoad(t.dataset.pid)/100)+' FTE'}}
 });
-document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;if(isRO())return;
-  if(k==='aFilter'){UI.aFilter=t.value;UI.aLimit=50;render()}
+document.addEventListener('change',async e=>{const t=e.target,k=t.dataset.in;
+  if(k==='aFilter'){UI.aFilter=t.value;UI.aLimit=50;render();return}
+  if(k==='hmRole'){UI.hmRole=t.value;heatmap($('#hm'));return}
+  if(k==='pSort'){UI.pSort=t.value;savePref();render();return}
+  if(isRO())return;
   if(k==='alloc'){render()}
 });
 /* ---------- Excel: template, export, import ----------
@@ -1617,7 +1768,10 @@ async function xlDownload(wb,name){
 
 /* forms */
 document.addEventListener('submit',e=>{const f=e.target;if(!f.dataset.form)return;e.preventDefault();if(isRO()&&f.dataset.form!=='gh'){toast('Mode hanya lihat: data tidak bisa diubah','warn');return}const d=Object.fromEntries(new FormData(f));
-  if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);if(ex)ex.alloc=clamp(ex.alloc+al,0,100);else S.assigns.push({id:uid('a'),p:d.p,e:d.e,alloc:al});markDirty();const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');if($('#ovl'))closeDialog();render()}
+  if(f.dataset.form==='assign'){const al=+d.alloc;const ex=S.assigns.find(a=>a.p===d.p&&a.e===d.e);let nid;if(ex){ex.alloc=clamp(ex.alloc+al,0,100);nid=ex.id}else{nid=uid('a');S.assigns.push({id:nid,p:d.p,e:d.e,alloc:al})}
+    markDirty();UI.flash=nid;UI.afP=d.p;UI.afAlloc=al;setTimeout(()=>{if(UI.flash===nid)UI.flash=null},2500);
+    const e2=person(d.e);const u=util(d.e);toast(`${e2.name} ditugaskan ke ${d.p} · utilisasi ${f0(u)}%`,u>S.settings.thr.high?'warn':'ok');
+    if(f.closest('#ovl')){if(f.dataset.ret&&proj(f.dataset.ret))reopenProject(f.dataset.ret);else closeDialog()}render()}
   if(f.dataset.form==='project'){const orig=f.dataset.orig;const id=d.id.trim();if(!id||(id!==orig&&S.projects.some(p=>p.id===id))){f.querySelector('[name=id]').classList.add('err');toast('Kode proyek sudah dipakai','err');return}
     if(d.end<d.start){f.querySelector('[name=end]').classList.add('err');toast('Tanggal selesai harus setelah mulai','err');return}
     const n={id,name:d.name.trim(),fac:d.fac.trim(),phase:d.phase,cx:+d.cx,start:d.start,end:d.end,progress:clamp(+d.progress||0,0,100)};
@@ -1898,7 +2052,7 @@ function Roll(el, text, up) {
   el.replaceChildren(...next);
 }
 
-function ContextMeter(root, { kinds, sizesRaw, sizesWeighted, window: WINDOW, title = "Kapasitas tim", unit = (d) => (d / 10).toLocaleString("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }) {
+function ContextMeter(root, { kinds, sizesRaw, sizesWeighted, window: WINDOW, title = "Kapasitas tim", unit = (d) => (d / 10).toLocaleString(LOC(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) }) {
   /* 20 across, each an exact 11 by 11 on a 3px gap, so every one is
      the same true square; here the rows follow the team's size */
   const COLS = 20, DOT_W = 11, DOT_H = 11, GAP = 3;
@@ -2035,7 +2189,8 @@ function CardSwap(root, cards, {
   every = 4,
   onFront = () => {},
 } = {}) {
-  const W = 360, H = 350, CW = 196, CH = 246, STEP_X = 34, STEP_Y = 26, STEP_Z = 70;
+  const W = 360, H = 350, CW = 196, CH = 246, NS = Math.max(1, cards.length - 1),
+    STEP_X = Math.min(34, 130 / NS), STEP_Y = Math.min(26, 78 / NS), STEP_Z = Math.min(70, 240 / NS);
   const slot = (k) => `translate3d(${k * STEP_X}px, ${-k * STEP_Y}px, ${-k * STEP_Z}px) skewY(6deg)`;
   let order = cards.map((c) => c.id);
   const st = { hover: false, drag: null };
@@ -2324,12 +2479,17 @@ function mountCtx(){const el=$('#ctx');if(!el)return;const K=[['ded','DED'],['fe
   const raw=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+a.alloc,0)/10);
   const wt=K.map(([_,ph])=>S.assigns.filter(a=>proj(a.p)?.phase===ph&&person(a.e)).reduce((s,a)=>s+aLoad(a),0)/10);
   ContextMeter(el,{kinds:K.map(([id,name])=>({id,name})),sizesRaw:raw,sizesWeighted:wt,window:Math.round(S.people.reduce((s,e)=>s+effCap(e),0)/10)})}
-function mountCsw(){const el=$('#csw');if(!el)return;const top=[...S.projects].sort((a,b)=>projLoad(b.id)-projLoad(a.id)).slice(0,4);if(!top.length){el.innerHTML='<div class="empty">Belum ada proyek</div>';return}
-  const shade=c=>`linear-gradient(160deg, ${c}, color-mix(in srgb, ${c} 62%, #000))`;
-  CardSwap(el,top.map(p=>({id:p.id,title:`${p.phase} · ${esc(p.id)}`,bg:shade(PH_COLOR[p.phase]),html:`<span class="k">${esc(p.id)} · ${esc(p.fac)}</span><span class="n">${esc(p.name)}</span><span class="f">${team(p.id).length} personel · ${CX_LABEL[p.cx]}</span><span class="big">${f2(projLoad(p.id)/100)}<small>FTE</small></span><span class="f">Progres ${p.progress}%</span><span class="bar"><i style="width:${p.progress}%"></i></span>`})),
+function mountCsw(){const el=$('#csw'),info=$('#cswInfo');if(!el)return;const rows=[...S.projects].map(p=>({p,v:projLoad(p.id)})).sort((a,b)=>b.v-a.v).slice(0,10);if(!rows.length){el.innerHTML='<div class="empty">Belum ada proyek</div>';if(info)info.innerHTML='';return}
+  const mx=rows[0].v,n=rows.length;const top=rows.map(r=>r.p);
+  /* colour by rank, highest red to 10th green; equal loads share the colour of the first of them */
+  const tc=v=>{const i=rows.findIndex(r=>Math.abs(r.v-v)<1e-9);return n>1?1-i/(n-1):1};
+  if(UI.cswMode==='list'){if(info)info.innerHTML='';el.innerHTML=`<div class="tp-list">${rows.map(({p,v},i)=>`<div class="tp-r" data-act="openProjectBtn" data-id="${esc(p.id)}"><span class="rk" style="background:${rankCol(tc(v))}">${i+1}</span><div style="min-width:0"><div class="nm"><span class="code">${esc(p.id)}</span> ${esc(p.name)}</div><div class="muted" style="font-size:11px">${p.phase} · ${team(p.id).length} personel · progres ${p.progress}%</div></div><div class="ov-bar"><i style="width:${mx?v/mx*100:0}%;background:${rankCol(tc(v))}"></i></div><b>${f2(v/100)}</b></div>`).join('')}</div><div class="muted" style="font-size:11px;margin-top:6px;text-align:right">angka = beban (FTE)</div>`;return}
+  const shade=(p)=>{const t=tc(projLoad(p.id));return `linear-gradient(160deg, ${rankCol(t,44)}, ${rankCol(t,24)})`};
+  CardSwap(el,top.map((p,i)=>({id:p.id,title:`#${i+1} · ${p.phase} · ${esc(p.id)}`,bg:shade(p),html:`<span class="k">${esc(p.id)} · ${esc(p.fac)}</span><span class="n">${esc(p.name)}</span><span class="f">${team(p.id).length} personel · ${CX_LABEL[p.cx]}</span><span class="big">${f2(projLoad(p.id)/100)}<small>FTE</small></span><span class="f">Progres ${p.progress}%</span><span class="bar"><i style="width:${p.progress}%"></i></span>`})),
   {onFront:id=>{const p=proj(id),i=top.findIndex(x=>x.id===id);$('#cswInfo').innerHTML=`<span class="muted">${i+1}/${top.length}</span><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</b><button class="btn sm" data-act="openProjectBtn" data-id="${p.id}">Detail</button>`}})}
 
 /* ---------- boot ---------- */
+TRO.observe(document.body,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:TR_ATTR});
 shell();Particles($('#logoCv'),{size:36});render();ghBoot();
 (async()=>{try{if(window.claude&&claude.use){ART=await claude.use('artifact');DL=await claude.use('downloads')}}catch(e){}})();
 </script>
