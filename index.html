@@ -899,8 +899,12 @@ const uid=p=>p+Math.random().toString(36).slice(2,8);
 const GHOK=!window.claude;
 let GH=null,ghSha=null,ghEtag=null,ghBusy=false,ghTimer=0,ghPoll=0,SYNC='off',SYNC_MSG='',conflictOpen=false;
 try{GH=JSON.parse(localStorage.getItem('wl-gh')||'null');ghSha=localStorage.getItem('wl-gh-sha')||null}catch(e){}
-/* view-only: a link with ?view=owner/repo reads a public data repo without a token and can change nothing */
-if(!GH&&GHOK){try{const q=new URLSearchParams(location.search),m=(q.get('view')||'').match(/^([\w.-]+)\/([\w.-]+)$/);if(m)GH={owner:m[1],repo:m[2],path:q.get('path')||'data.json',branch:q.get('branch')||'main',token:'',ro:true}}catch(e){}}
+/* view-only: a device without a token reads the public data repo and can change nothing.
+   The plain link opens the owner's data; ?view=owner/repo opens another repo; ?local keeps this device's own data */
+const DEF_VIEW={owner:'Malegiw',repo:'workload-data',path:'data.json',branch:'main'};
+if(!GH&&GHOK){try{const q=new URLSearchParams(location.search),m=(q.get('view')||'').match(/^([\w.-]+)\/([\w.-]+)$/);
+  if(m)GH={owner:m[1],repo:m[2],path:q.get('path')||'data.json',branch:q.get('branch')||'main',token:'',ro:true};
+  else if(!q.has('local'))GH={...DEF_VIEW,token:'',ro:true}}catch(e){}}
 const isRO=()=>!!(GH&&GH.ro);let ROST='load',ROMSG='';
 const b64e=t=>{const u=new TextEncoder().encode(t);let b='';for(let i=0;i<u.length;i+=0x8000)b+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(b)};
 const b64d=t=>new TextDecoder().decode(Uint8Array.from(atob(t.replace(/\s/g,'')),c=>c.charCodeAt(0)));
@@ -954,16 +958,19 @@ async function ghPull(initial){
       if(!rr.ok)throw await ghErr(r);
       if(GH.ro)throw new Error('File data belum ada di repo itu.');
       ghSha=null;await ghPush();return}
-    if(!r.ok)throw await ghErr(r);
-    ghEtag=r.headers.get('ETag');
-    const j=await r.json();
+    let j;
+    /* a viewer has no token, so GitHub allows it few API calls an hour; past that it reads the raw file instead */
+    if(!r.ok){if(GH.ro&&(r.status===403||r.status===429))j=await ghRaw();else throw await ghErr(r)}
+    else{ghEtag=r.headers.get('ETag');j=await r.json()}
     if(j.sha===ghSha){if(!DIRTY)setSync('ok');else ghSchedule();if(GH.ro&&ROST!=='ok'){ROST='ok';render()}return}
-    let o;try{o=JSON.parse(b64d(j.content))}catch(e){throw new Error('Isi file di GitHub bukan JSON yang valid')}
+    let o;try{o=JSON.parse(j.text!=null?j.text:b64d(j.content))}catch(e){throw new Error('Isi file di GitHub bukan JSON yang valid')}
     if(!ghValid(o))throw new Error('Isi file di GitHub bukan data Workload')
     if(DIRTY){await ghConflict(j,o);return}
     ghAdopt(o,j.sha);setSync('ok');if(GH.ro)ROST='ok';render();if(!GH.ro)toast(initial?'Data dimuat dari GitHub':'Data diperbarui dari perangkat lain')
   }catch(e){if(GH&&GH.ro&&ROST!=='ok'){ROST='err';ROMSG=ghNet(e).message;render()}setSync('err',ghNet(e).message)}
 }
+async function ghRaw(){const r=await fetch(`https://raw.githubusercontent.com/${GH.owner}/${GH.repo}/${encodeURIComponent(GH.branch)}/${ghPath()}?t=${Date.now()}`,{cache:'no-store'});
+  if(!r.ok)throw new Error('Batas permintaan GitHub tercapai, coba lagi sebentar lagi.');const t=await r.text();let x=0;for(let i=0;i<t.length;i++)x=(x*31+t.charCodeAt(i))|0;return {sha:'raw'+x+'-'+t.length,text:t}}
 /* two versions: the file on GitHub moved on while this device was
    holding changes. Nothing is overwritten until one is picked */
 async function ghConflict(j,o){
@@ -1410,7 +1417,7 @@ function ghCard(){
 function ghForm(){return `<form data-form="gh"><div class="row2"><div class="field"><label>Repo data</label><input class="in" name="repo" placeholder="Malegiw/workload-data" autocomplete="off" autocapitalize="off" required><div class="hint">Boleh Private atau Public. Public berarti semua orang bisa membaca data. Terpisah dari repo aplikasi</div></div><div class="field"><label>Token</label><input class="in" type="password" name="token" placeholder="github_pat_…" autocomplete="off" required><div class="hint">Fine-grained token dengan Contents: Read and write</div></div></div>
     <div class="row2"><div class="field"><label>File data</label><input class="in" name="path" value="data.json"></div><div class="field"><label>Branch</label><input class="in" name="branch" value="main"></div></div>
     <button class="btn primary" type="submit">Hubungkan</button></form>`}
-const shareLink=()=>location.origin+location.pathname+'?view='+GH.owner+'/'+GH.repo+(GH.path!=='data.json'?'&path='+encodeURIComponent(GH.path):'')+(GH.branch!=='main'?'&branch='+encodeURIComponent(GH.branch):'');
+const shareLink=()=>GH.owner===DEF_VIEW.owner&&GH.repo===DEF_VIEW.repo&&GH.path===DEF_VIEW.path&&GH.branch===DEF_VIEW.branch?location.origin+location.pathname:location.origin+location.pathname+'?view='+GH.owner+'/'+GH.repo+(GH.path!=='data.json'?'&path='+encodeURIComponent(GH.path):'')+(GH.branch!=='main'?'&branch='+encodeURIComponent(GH.branch):'');
 function explainCard(){const st=S.settings,lv=st.lvF||LVF0;
   const ex={ph:'DED',role:'Civil/Structure',cx:3,al:50,pr:20,lvl:'Senior',cap:100};
   const w=st.phaseW[ex.ph],rf=(st.roleF[ex.role]||{})[ex.ph]??1,cf=st.cxF[ex.cx],lf=lv[ex.lvl],ld=w*rf*cf*ex.al*(1-ex.pr/100),ec=ex.cap*lf,u=ld*100/ec;
